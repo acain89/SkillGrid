@@ -1,0 +1,64 @@
+.home-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 40px 0;
+  background: radial-gradient(circle, #05171f, #00080d);
+  font-family: "Rajdhani", sans-serif;
+  color: #00f0ff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home-title {
+  font-size: 42px;
+  font-weight: 800;
+  color: #00ffe5;
+  text-shadow: 0 0 14px #00ffe580;
+}
+
+.home-sub {
+  margin-top: 4px;
+  opacity: 0.7;
+  margin-bottom: 30px;
+}
+
+.game-grid {
+  display: flex;
+  gap: 30px;
+}
+
+.game-card {
+  width: 240px;
+  padding: 20px;
+  border-radius: 14px;
+  background: rgba(0, 30, 40, 0.8);
+  border: 2px solid #006b7a;
+  box-shadow: 0 0 14px #003c44 inset;
+  text-align: center;
+}
+
+.game-card:hover {
+  box-shadow: 0 0 20px #00eaff55;
+}
+
+.game-name {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.time-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.time-btn {
+  padding: 10px;
+  background: linear-gradient(90deg, #00aaff, #00f6ff);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}

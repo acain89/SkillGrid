@@ -1,0 +1,266 @@
+/* ==========================================================
+   SKILLGRID — TOURNAMENT BRACKET NEON THEME
+   ========================================================== */
+
+.tournament-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 30px 0 80px;
+  background: radial-gradient(circle at center, #03151c 0%, #00070a 75%);
+  font-family: "Rajdhani", sans-serif;
+  color: #00eaff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---------- TITLES ---------- */
+.title {
+  font-size: 38px;
+  font-weight: 700;
+  color: #00ffe6;
+  margin-bottom: 4px;
+  text-shadow: 0 0 12px #00eaff, 0 0 18px #00eaff;
+}
+
+.subtitle {
+  font-size: 20px;
+  opacity: 0.75;
+  margin-bottom: 40px;
+}
+
+/* ==========================================================
+   BRACKET LAYOUT
+   ========================================================== */
+.bracket {
+  display: flex;
+  gap: 40px;
+  padding: 0 20px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.round {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 260px;
+}
+
+.round-title {
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 10px;
+  color: #6ff;
+  text-shadow: 0 0 10px #00d5ff77;
+}
+
+/* ==========================================================
+   MATCH CARDS
+   ========================================================== */
+.match-card {
+  background: rgba(0, 25, 35, 0.85);
+  border: 2px solid #014d5c;
+  border-radius: 12px;
+  padding: 14px 14px 20px;
+  box-shadow: 0 0 10px #002b33 inset;
+  transition: 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Active match pulse */
+.match-card.active {
+  border-color: #00ffe6;
+  box-shadow: 0 0 12px #00ffe677, 0 0 25px #00ffe644;
+  animation: pulseActive 1.5s infinite;
+}
+
+@keyframes pulseActive {
+  0% { box-shadow: 0 0 12px #00ffe677; }
+  50% { box-shadow: 0 0 26px #00ffe6; }
+  100% { box-shadow: 0 0 12px #00ffe677; }
+}
+
+/* Finished match fade */
+.match-card.finished {
+  opacity: 0.55;
+  border-color: #2b5a63;
+}
+
+/* ---------- Player Names ---------- */
+.match-players {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 19px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.match-players .vs {
+  opacity: 0.7;
+}
+
+.p1,
+.p2 {
+  color: #9ff;
+  text-shadow: 0 0 6px #0099bb;
+}
+
+/* ---------- Score ---------- */
+.score {
+  margin-bottom: 12px;
+  font-size: 20px;
+  color: #fff;
+  text-shadow: 0 0 10px #00d9ff;
+}
+
+/* ==========================================================
+   BUTTONS
+   ========================================================== */
+
+.start-btn,
+.sim-btn,
+.view-btn {
+  width: 100%;
+  padding: 8px 0;
+  margin-top: 8px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: 0.18s ease;
+}
+
+/* Start Match */
+.start-btn {
+  background: linear-gradient(90deg, #00aaff, #00eaff);
+  color: #00333d;
+  box-shadow: 0 0 10px #00d9ff77;
+}
+
+.start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 18px #00eaffaa;
+}
+
+/* Simulate Move */
+.sim-btn {
+  background: linear-gradient(90deg, #ffaa00, #ffdd55);
+  color: #402400;
+  box-shadow: 0 0 10px #ffcc0077;
+}
+
+.sim-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 18px #ffdd55aa;
+}
+
+/* View Match */
+.view-btn {
+  background: linear-gradient(90deg, #6600ff, #aa55ff);
+  color: #f0e6ff;
+  box-shadow: 0 0 10px #aa55ff77;
+}
+
+.view-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 18px #bb77ffaa;
+}
+
+/* ==========================================================
+   WINNER TEXT
+   ========================================================== */
+.winner {
+  margin-top: 8px;
+  color: #0f0;
+  font-weight: 700;
+  font-size: 18px;
+  text-shadow: 0 0 10px #0f0;
+}
+
+.winner-name {
+  color: #9f9;
+  font-weight: 700;
+}
+
+/* ==========================================================
+   CHAMPION SCREEN
+   ========================================================== */
+
+.champion-title {
+  margin-top: 40px;
+  font-size: 44px;
+  font-weight: 900;
+  color: #00fff2;
+  text-shadow: 0 0 16px #0ff, 0 0 26px #00e5ff;
+}
+
+.champion-name {
+  margin-top: 20px;
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 12px #00fff2;
+}
+
+.restart-btn {
+  margin-top: 40px;
+  padding: 12px 40px;
+  background: linear-gradient(90deg, #0099ff, #00ddff);
+  border: none;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #003a45;
+  cursor: pointer;
+  box-shadow: 0 0 16px #00dfff88;
+  transition: 0.2s;
+}
+
+.restart-btn:hover {
+  transform: scale(1.07);
+  box-shadow: 0 0 26px #00eaffaa;
+}
+
+/* ==========================================================
+   EVENT LOG
+   ========================================================== */
+.event-log {
+  width: 80%;
+  max-width: 900px;
+  margin-top: 50px;
+}
+
+.event-log h3 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.log-box {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 14px;
+  border-radius: 12px;
+  height: 200px;
+  overflow-y: auto;
+  border: 2px solid #014d5c;
+}
+
+/* Scrollbar styling */
+.log-box::-webkit-scrollbar {
+  width: 10px;
+}
+
+.log-box::-webkit-scrollbar-thumb {
+  background: #00ccff66;
+  border-radius: 6px;
+}
+
+.log-box::-webkit-scrollbar-thumb:hover {
+  background: #00ccffaa;
+}

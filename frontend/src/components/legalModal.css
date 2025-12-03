@@ -1,0 +1,129 @@
+/* src/components/legalModal.css */
+
+.legal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, #01131bdd 0, #000000ee 55%);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+}
+
+.legal-modal {
+  width: min(760px, 92vw);
+  max-height: 80vh;
+  background: radial-gradient(circle at top, #04131e 0, #02060c 70%);
+  border-radius: 18px;
+  border: 1px solid #00eaff66;
+  box-shadow: 0 0 30px #00eaff55;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #eafdff;
+  font-family: "Rajdhani", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+.legal-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+  border-bottom: 1px solid #00eaff33;
+}
+
+.legal-modal-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legal-modal-title {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px #00eaff88;
+}
+
+.legal-modal-updated {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.legal-modal-close {
+  background: none;
+  border: none;
+  color: #eafdff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 999px;
+}
+
+.legal-modal-close:hover {
+  background: #00eaff22;
+}
+
+.legal-modal-body {
+  padding: 12px 20px 10px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+/* Scrollbar */
+.legal-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.legal-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.legal-modal-body::-webkit-scrollbar-thumb {
+  background: #00eaff66;
+  border-radius: 3px;
+}
+
+.legal-section {
+  margin-bottom: 14px;
+}
+
+.legal-section-heading {
+  margin: 0 0 4px;
+  font-size: 0.98rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #aaf5ff;
+}
+
+.legal-section-body {
+  margin: 0;
+  line-height: 1.45;
+  white-space: pre-line;
+  opacity: 0.9;
+}
+
+.legal-modal-footer {
+  padding: 10px 20px 14px;
+  border-top: 1px solid #00eaff33;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.legal-modal-done-btn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid #00eaffaa;
+  background: #021017;
+  color: #eafdff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.legal-modal-done-btn:hover {
+  box-shadow: 0 0 16px #00eaff55;
+}

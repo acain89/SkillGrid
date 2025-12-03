@@ -1,0 +1,232 @@
+/* BACKDROP */
+.pp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+}
+
+/* MAIN MODAL */
+.pp-modal {
+  width: 700px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #0c1424;
+  border: 1px solid #3d5678;
+  border-radius: 18px;
+  padding: 28px 32px;
+  color: #e8f2ff;
+  box-shadow: 0 0 50px rgba(0,0,0,0.8);
+}
+
+/* HEADER */
+.pp-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.pp-avatar {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: linear-gradient(135deg,#45f7ff,#ff3df7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 32px;
+  font-weight: 700;
+  color: #0d1122;
+  box-shadow: 0 0 20px rgba(69,247,255,0.4);
+}
+
+.pp-username {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.pp-email {
+  font-size: 14px;
+  color: #9fb1cc;
+}
+
+.pp-membersince {
+  font-size: 12px;
+  color: #7f91ac;
+}
+
+/* SECTION */
+.pp-section {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 18px;
+  margin-top: 20px;
+}
+
+.pp-section-title {
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b2c9f0;
+  margin-bottom: 10px;
+}
+
+/* ROWS */
+.pp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 6px 0;
+}
+
+.pp-row-label {
+  color: #9eb4d6;
+}
+
+.pp-row-value {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* GRID CARD GROUPS */
+.pp-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.pp-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.pp-card-title {
+  font-size: 14px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* FORMAT COLORS */
+.pp-cyan {
+  border-color: rgba(50,255,208,0.5);
+}
+
+.pp-orange {
+  border-color: rgba(255,206,99,0.5);
+}
+
+.pp-magenta {
+  border-color: rgba(255,61,247,0.5);
+}
+
+/* RECENT MATCHES */
+.pp-recent {
+  border-radius: 12px;
+  border: 1px solid rgba(100,140,190,0.2);
+  background: rgba(255,255,255,0.02);
+  padding: 12px;
+}
+
+.pp-recent-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  font-size: 13px;
+  padding: 6px 0;
+  color: #d5e8ff;
+}
+
+.pp-recent-row + .pp-recent-row {
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+
+/* BADGES */
+.pp-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.pp-badge {
+  font-size: 22px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  height: 56px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pp-badge.empty {
+  color: #6e7b8f;
+  font-size: 18px;
+}
+
+/* CLOSE BUTTON */
+.pp-close-btn {
+  margin-top: 24px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid #4f6a93;
+  background: #15253b;
+  color: #e4efff;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  float: right;
+}
+
+.pp-close-btn:hover {
+  border-color: #7ea4d3;
+  background: #1e304b;
+}
+
+/* SCROLLBAR (Optional niceness) */
+.pp-modal::-webkit-scrollbar {
+  width: 10px;
+}
+
+.pp-modal::-webkit-scrollbar-thumb {
+  background: rgba(150,150,170,0.25);
+  border-radius: 10px;
+}
+
+/* CASH OUT BUTTON — CLEAN, SMALL, NEON */
+.pp-cashout-btn {
+  width: 180px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 255, 200, 0.25);
+  background: rgba(0, 255, 200, 0.05);
+  color: rgba(0, 255, 200, 0.45);
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 6px 0 10px 0;
+  transition: 0.2s ease;
+  display: block;
+  text-align: center;
+
+  /* IMPORTANT: normal pointer — no “not allowed” cursor */
+  cursor: pointer;
+}
+
+/* ENABLED STATE */
+.pp-cashout-btn.active {
+  color: #00ffc8;
+  border-color: #00ffc8;
+  background: rgba(0, 255, 200, 0.12);
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.35);
+}
+
+/* HOVER ONLY WHEN ACTIVE */
+.pp-cashout-btn.active:hover {
+  background: rgba(0, 255, 200, 0.2);
+  box-shadow: 0 0 14px rgba(0, 255, 200, 0.55);
+}

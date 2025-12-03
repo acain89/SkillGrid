@@ -1,0 +1,97 @@
+.lb-container {
+  width: 100%;
+  min-height: 100vh;
+  background: radial-gradient(circle, #04151c, #000608);
+  font-family: "Rajdhani", sans-serif;
+  color: #6ff;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.lb-title {
+  font-size: 38px;
+  font-weight: 800;
+  text-shadow: 0 0 12px #00eaff;
+}
+
+.lb-sub {
+  opacity: 0.8;
+  margin-bottom: 30px;
+}
+
+.lb-bracket {
+  display: flex;
+  gap: 40px;
+}
+
+.lb-round {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.lb-round-title {
+  text-align: center;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.lb-match-card {
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid #014a5c;
+  background: rgba(0, 25, 35, 0.85);
+  transition: 0.2s;
+}
+
+.lb-active {
+  animation: lbPulse 1.6s infinite;
+  border-color: #00ffe6;
+}
+
+@keyframes lbPulse {
+  0% { box-shadow: 0 0 12px #00ffe655; }
+  50% { box-shadow: 0 0 24px #00ffe6; }
+  100% { box-shadow: 0 0 12px #00ffe655; }
+}
+
+.lb-finished {
+  opacity: 0.45;
+}
+
+.lb-waiting {
+  opacity: 0.75;
+}
+
+.lb-names {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.lb-vs {
+  margin: 0 6px;
+  opacity: 0.6;
+}
+
+.lb-score {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.lb-winner-slide {
+  padding: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #9f9;
+  animation: slideWinner 0.4s ease-out forwards;
+}
+
+@keyframes slideWinner {
+  0% { transform: translateY(12px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}

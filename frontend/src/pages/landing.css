@@ -1,0 +1,246 @@
+/* src/pages/landing.css */
+
+.landing-root {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  background: radial-gradient(circle at top, #0b4b5b 0, #02040a 42%, #000008 100%);
+  color: #eafdff;
+  font-family: "Rajdhani", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+/* Shared glow layer */
+.landing-bg-glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(circle at 50% 0%, #00f0ff40 0, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Center content */
+.landing-main {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+
+  padding: 24px;
+  max-width: 640px;
+}
+
+/* Hero container */
+.landing-hero {
+  position: relative;
+  text-align: center;
+  padding-top: 24px;
+}
+
+/* Floating neon pyramid */
+.landing-triangle {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 190px;
+  height: 190px;
+
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  border: 2px solid rgba(0, 255, 255, 0.8);
+
+  background: radial-gradient(
+    circle at 50% 20%,
+    rgba(0, 255, 255, 0.16),
+    transparent 70%
+  );
+
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.5),
+    0 0 45px rgba(0, 220, 255, 0.35);
+
+  opacity: 0.24;
+  animation: landing-spin 18s linear infinite,
+    landing-pulse 3s ease-in-out infinite;
+}
+
+.landing-triangle--large {
+  width: 220px;
+  height: 220px;
+}
+
+@keyframes landing-spin {
+  from {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
+
+@keyframes landing-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    box-shadow: 0 0 16px #00f0ff66, 0 0 34px #00eaff55;
+  }
+  50% {
+    opacity: 0.3;
+    box-shadow: 0 0 22px #00f0ffbb, 0 0 60px #00eaff77;
+  }
+}
+
+/* Text styling */
+.landing-title {
+  font-size: 2.8rem;
+  letter-spacing: 0.22em;
+  margin: 0;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px #00f0ff, 0 0 32px #00f0ff;
+}
+
+.landing-tagline {
+  margin-top: 26px;
+  font-size: 1.25rem;
+  opacity: 0.95;
+}
+
+.landing-description--tight {
+  margin-top: 12px;
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.landing-description--micro {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  opacity: 0.65;
+}
+
+/* Button stack */
+.landing-actions {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.landing-btn {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 999px;
+  border: 1px solid #00eaffaa;
+  background: rgba(0, 15, 22, 0.9);
+  color: #eafdff;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  box-shadow: 0 0 10px #00eaff55;
+  transition: 0.14s ease;
+}
+
+.landing-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px #00eaff99;
+}
+
+.landing-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.landing-btn--primary {
+  border-color: #00f0ff;
+}
+
+.landing-btn--secondary {
+  border-color: #ff8c3a;
+  box-shadow: 0 0 10px #ff8c3a66;
+}
+
+.landing-btn--google {
+  border-color: #ffffff88;
+  background: #0a0a0a;
+  box-shadow: 0 0 10px #ffffff33;
+}
+
+/* Google icon */
+.landing-google-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Legal snippet */
+.landing-legal-snippet {
+  font-size: 0.75rem;
+  margin-top: 4px;
+  text-align: center;
+  opacity: 0.72;
+  max-width: 300px;
+}
+
+/* Footer */
+.landing-footer {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.landing-footer-link {
+  background: none;
+  border: none;
+  color: #eafdff;
+  cursor: pointer;
+  padding: 0 6px;
+  font-size: 0.75rem;
+}
+
+.landing-footer-link:hover {
+  text-decoration: underline;
+}
+
+.landing-footer-sep {
+  opacity: 0.4;
+}
+
+/* Loading screen text */
+.landing-loading-inner {
+  text-align: center;
+  z-index: 1;
+}
+
+.landing-loading-text {
+  margin-top: 22px;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}

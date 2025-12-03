@@ -1,0 +1,231 @@
+/* src/pages/triathlon.css */
+
+.tri-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #08f7ff 0, #020617 55%, #000 100%);
+  color: #e5f2ff;
+  font-family: "Rajdhani", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 32px 24px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tri-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.tri-header h1 {
+  letter-spacing: 0.35em;
+  font-size: 32px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.tri-header p {
+  opacity: 0.85;
+  font-size: 14px;
+}
+
+.tri-main {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1.3fr) 260px;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tri-panel {
+  background: radial-gradient(circle at top left, #0b1623, #020618 65%);
+  border-radius: 18px;
+  padding: 18px 16px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tri-panel h2 {
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+}
+
+.tri-status {
+  font-size: 14px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(129, 140, 248, 0.1));
+}
+
+.tri-games-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tri-game-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.tri-game-row--active {
+  outline: 1px solid rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
+}
+
+.tri-game-row--done {
+  opacity: 0.78;
+}
+
+.tri-game-name {
+  font-weight: 600;
+}
+
+.tri-game-score {
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tri-game-winner-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.14);
+  color: #4ade80;
+}
+
+.tri-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+}
+
+.tri-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+}
+
+.tri-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+  transform: none;
+}
+
+.tri-btn--secondary {
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5f2ff;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+}
+
+.tri-btn--playerA {
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  color: #020617;
+}
+
+.tri-btn--playerB {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  color: #020617;
+}
+
+.tri-panel--center {
+  align-items: center;
+  text-align: center;
+}
+
+.tri-current-game-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tri-starting-player {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.tri-dev-controls {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: radial-gradient(circle at top, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.9));
+  max-width: 360px;
+}
+
+.tri-dev-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.tri-dev-text {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-bottom: 10px;
+}
+
+.tri-dev-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.tri-panel--right {
+  font-size: 13px;
+}
+
+.tri-countdown {
+  padding: 10px 10px;
+  border-radius: 12px;
+  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.95));
+}
+
+.tri-countdown--idle {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.tri-countdown-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+
+.tri-countdown-main {
+  font-size: 13px;
+}
+
+.tri-finished {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: radial-gradient(circle at top, rgba(34, 197, 94, 0.14), rgba(15, 23, 42, 0.95));
+}
+
+.tri-finished-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.tri-finished-sub {
+  font-size: 13px;
+  opacity: 0.9;
+}

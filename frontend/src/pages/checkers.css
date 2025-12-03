@@ -1,0 +1,410 @@
+/* frontend/src/pages/checkers.css */
+
+/* -------- PAGE LAYOUT -------- */
+
+.checkers-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #071018 0, #020509 45%, #000000 100%);
+  color: #eaf7ff;
+  font-family: "Rajdhani", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px 56px;
+  box-sizing: border-box;
+}
+
+.checkers-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.checkers-title {
+  font-size: 28px;          /* smaller */
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #00f0ff;
+  text-shadow:
+    0 0 4px rgba(0, 240, 255, 0.6),
+    0 0 12px rgba(0, 240, 255, 0.4);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.checkers-subtitle {
+  font-size: 14px;
+  opacity: 0.85;
+  margin-top: -4px;
+  letter-spacing: 0.03em;
+}
+
+
+
+/* -------- PLAYER CARDS -------- */
+
+.checkers-player-row {
+  display: flex;
+  gap: 24px;
+  margin-top: 18px;
+  margin-bottom: 12px;
+}
+
+.checkers-player-card {
+  width: 190px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  background: radial-gradient(circle at top, #050b11 0, #02050a 100%);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.35);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.checkers-player-card.active {
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
+}
+
+/* Card: Player Label + Turn Tag */
+
+.checkers-player-label {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.checkers-player-turn-tag {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #00f0ff, #14c3ff);
+  color: #021015;
+  font-weight: 700;
+}
+
+/* Card Middle Row:
+   Wins (left) + Ring Timer (right)
+*/
+
+.checkers-card-middle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.checkers-player-wins {
+  font-size: 13px;
+}
+
+.checkers-player-wins span {
+  font-weight: 700;
+}
+
+/* Timer Ring */
+
+.checkers-timer-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkers-timer-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Chip Icons */
+
+.checkers-card-bottom {
+  display: flex;
+  align-items: center;
+}
+
+.checkers-player-chip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.65), 0 5px 5px rgba(0, 0, 0, 0.7);
+}
+
+.checkers-player-chip-icon.red {
+  background: radial-gradient(circle at 30% 20%, #ff9b9b, #e63946 60%, #8b111d 100%);
+}
+
+.checkers-player-chip-icon.black {
+  background: radial-gradient(circle at 30% 20%, #888888, #1a1a1a 65%, #000000 100%);
+}
+
+/* -------- BOARD FRAME -------- */
+
+.checkers-board-frame {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.55);
+  background: radial-gradient(circle at top, #050b11 0, #02050a 100%);
+}
+
+/* -------- BOARD GRID -------- */
+
+.checkers-board {
+  display: inline-block;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.checkers-board.shake {
+  animation: board-shake 0.15s ease;
+}
+
+@keyframes board-shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+.checkers-row {
+  display: flex;
+}
+
+.checkers-tile {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.tile-dark {
+  background: #222830;
+}
+
+.tile-light {
+  background: #d5b895;
+}
+
+/* Hover effect */
+
+.checkers-tile:hover::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+/* Outlines */
+
+.tile-selected::before,
+.tile-move-target::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 8px;
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.55);
+  pointer-events: none;
+}
+
+.selected-outline,
+.move-target-outline {
+  position: absolute;
+  inset: 6px;
+  border-radius: 8px;
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
+  pointer-events: none;
+}
+
+/* Capture flash */
+
+.tile-capture-flash {
+  animation: capture-flash 0.25s ease-out;
+}
+
+@keyframes capture-flash {
+  0% { box-shadow: 0 0 0 rgba(255,0,0,0); }
+  50% { box-shadow: 0 0 12px rgba(255,0,0,0.8); }
+  100% { box-shadow: 0 0 0 rgba(255,0,0,0); }
+}
+
+/* -------- PIECES -------- */
+
+.piece {
+  position: absolute;
+  inset: 10px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.3), transparent 55%);
+  box-shadow:
+    0 2px 0 rgba(0,0,0,0.65),
+    0 6px 6px rgba(0,0,0,0.6);
+}
+
+/* Red piece */
+
+.piece-red {
+  background-color: #e63946;
+  border: 3px solid #b11825;
+}
+
+.piece-red::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.35);
+}
+
+/* Black piece */
+
+.piece-black {
+  background-color: #1a1a1a;
+  border: 3px solid #000000;
+}
+
+.piece-black::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+/* Kings */
+
+.piece-king {
+  border-color: #f4f4f4;
+}
+
+.piece-king::before {
+  border-color: rgba(255,255,255,0.8);
+}
+
+.piece-king-label {
+  font-size: 22px;
+  font-weight: 700;
+  color: #00f0ff;
+  text-shadow: 0 0 6px rgba(0,240,255,0.9);
+}
+
+/* Move / selection animations */
+
+@keyframes soft-jump {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+.piece-last-move {
+  animation: soft-jump 0.45s ease-out;
+}
+
+.tile-move-target {
+  animation: soft-jump 0.7s ease-in-out infinite;
+}
+
+.piece-king-new {
+  animation: king-flash 0.55s ease-out;
+}
+
+@keyframes king-flash {
+  0% { box-shadow: 0 0 0 rgba(0,240,255,0); }
+  40% { box-shadow: 0 0 16px rgba(0,240,255,0.9); }
+  100% { box-shadow: 0 0 4px rgba(0,0,0,0.6); }
+}
+
+/* -------- MODAL (timeouts) -------- */
+
+.checkers-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.95));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.checkers-modal {
+  width: min(420px, 90vw);
+  padding: 24px 20px;
+  border-radius: 20px;
+  border: 1px solid #00f0ff;
+  background: radial-gradient(circle at top, #050c13 0, #020509 100%);
+  box-shadow: 0 0 16px rgba(0,240,255,0.7);
+  text-align: center;
+  color: #eaf7ff;
+}
+
+.checkers-modal h2 {
+  font-size: 22px;
+  margin-bottom: 10px;
+  color: #00f0ff;
+  text-shadow: 0 0 6px rgba(0,240,255,0.8);
+}
+
+.checkers-modal p {
+  font-size: 15px;
+  opacity: 0.9;
+  margin-bottom: 16px;
+}
+
+.checkers-modal-btn {
+  background: linear-gradient(135deg, #00f0ff, #14c3ff);
+  border-radius: 999px;
+  border: none;
+  padding: 8px 18px;
+  color: #02060a;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0,240,255,0.7);
+}
+
+/* -------- RESPONSIVE -------- */
+
+@media (max-width: 768px) {
+  .checkers-player-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .checkers-player-card {
+    width: 220px;
+  }
+
+  .checkers-tile {
+    width: 48px;
+    height: 48px;
+  }
+
+  .checkers-board-frame {
+    padding: 10px;
+  }
+
+  .checkers-title {
+    font-size: 28px;
+  }
+}

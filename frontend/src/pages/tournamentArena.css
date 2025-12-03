@@ -1,0 +1,394 @@
+/* ============================================================
+   SKILLGRID — FINAL CONSOLIDATED CARD + LAYOUT SYSTEM
+   ============================================================ */
+
+.arena-root {
+  position: relative;
+  min-height: 100vh;
+  padding: 32px 40px 130px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: radial-gradient(circle at top, #06182a 0%, #020713 48%, #010208 100%);
+  color: #e9f5ff;
+  overflow-x: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Background glow + rotating triangle */
+.arena-bg-glow {
+  position: absolute;
+  inset: -200px;
+  background:
+    radial-gradient(circle at top, rgba(79, 246, 255, 0.14), transparent 60%),
+    radial-gradient(circle at bottom, rgba(255, 85, 238, 0.14), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.arena-bg-glow::before {
+  content: "";
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 420px;
+  height: 420px;
+  transform: translateX(-50%) rotate(0deg);
+  background: conic-gradient(
+    from 0deg,
+    rgba(69, 247, 255, 0.28),
+    rgba(255, 62, 245, 0.18),
+    rgba(255, 206, 99, 0.22),
+    rgba(69, 247, 255, 0.28)
+  );
+  opacity: 0.12;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  filter: blur(5px);
+  animation: spinTriangle 45s linear infinite;
+}
+
+/* ==============================
+   FLOATING LOGOUT + BACK BUTTONS
+   ============================== */
+
+.arena-logout-btn {
+  position: fixed;
+  top: 20px;
+  right: 30px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid #3c4f6b;
+  background: rgba(9, 27, 50, 0.88);
+  color: #d5e6ff;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  z-index: 999999 !important;
+}
+
+.arena-back-btn {
+  position: fixed;
+  top: 25px;
+  left: 25px;
+  padding: 10px 22px;
+  border-radius: 40px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  letter-spacing: 1px;
+  font-size: 14px;
+  transition: 0.2s;
+  z-index: 999999 !important;
+}
+
+/* ==============================
+   HEADER
+   ============================== */
+
+.arena-header {
+  text-align: center;
+  margin-top: 60px;
+  margin-bottom: 50px;
+  position: relative;
+  z-index: 1;
+}
+
+.arena-title {
+  margin: 0 0 8px;
+  font-size: 34px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #45f7ff;
+  text-shadow: 0 0 20px rgba(69, 247, 255, 0.45);
+}
+
+.arena-subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: #a8bdd4;
+}
+
+/* ==============================
+   MAIN + GRID
+   ============================== */
+
+.arena-main {
+  position: relative;
+  z-index: 1;
+  padding: 10px 10px 40px; /* ← THIS WILL NOW WORK */
+  max-width: 1500px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+
+.arena-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 45px;
+}
+
+/* ==============================
+   CARD SYSTEM (FULL FIXED VERSION)
+   ============================== */
+
+.arena-card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  --accent: #fff;
+  --accent-soft: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+
+  /* NEW: ensures perfect even height */
+  display: flex;
+  flex-direction: column;
+  height: 400px;
+}
+
+/* Glow border */
+.arena-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 12px var(--accent-soft);
+  animation: pulseBorder 4.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.arena-card-inner {
+  padding: 20px 20px;
+  background: radial-gradient(circle at 30% 10%, #122033, #050816 70%);
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Per-card theme */
+.arena-card--cyan    { --accent: #32ffd0; --accent-soft: rgba(50,255,208,0.55); }
+.arena-card--orange  { --accent: #ffce63; --accent-soft: rgba(255,206,99,0.55); }
+.arena-card--magenta { --accent: #ff3df7; --accent-soft: rgba(255,61,247,0.55); }
+
+.arena-card-solid-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent-soft);
+  margin-bottom: 18px;
+}
+
+/* Titles */
+.arena-card-header {
+  margin-bottom: 20px;
+  min-height: 52px;
+}
+
+.arena-card-title {
+  margin: 0 0 6px;
+  font-size: 26px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 14px var(--accent-soft);
+}
+
+.arena-card-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #bfcce0;
+}
+
+/* Main content */
+.arena-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.arena-card-pot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.arena-card-pot-label {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: #95a9c3;
+}
+
+.arena-card-pot-value {
+  font-size: 22px;
+  color: white;
+}
+
+.arena-card-players-cap {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+
+/* Payout block */
+.arena-card-payout-block {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(150, 165, 200, 0.28);
+}
+
+.arena-card-payout-title {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #9fb4d4;
+  margin-bottom: 6px;
+}
+
+.arena-card-payouts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: #d7e9ff;
+  font-size: 14px;
+}
+
+.arena-card-payouts li + li {
+  margin-top: 4px;
+}
+
+/* Footer button */
+.arena-card-footer {
+  margin-top: auto;
+  padding-top: 10px;   /* <— smaller gap */
+}
+
+
+.arena-join-btn {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: rgba(10,25,45,0.88);
+  color: white;
+  letter-spacing: 0.2em;
+  font-size: 14px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.arena-join-btn:hover:not(:disabled) {
+  background: rgba(18,38,65,0.95);
+  box-shadow: 0 0 20px var(--accent-soft);
+}
+
+/* ==============================
+   TRUST CHECKLIST
+   ============================== */
+
+.trust-checklist {
+  text-align: center;
+  margin-top: 50px;
+  opacity: 0.9;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.trust-checklist p { margin: 4px 0; }
+
+/* ==============================
+   FOOTER BUTTONS (PROFILE / RULES)
+   ============================== */
+
+.footer-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding-bottom: 60px;
+}
+
+.footer-button {
+  padding: 12px 32px;
+  border-radius: 40px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  backdrop-filter: blur(6px);
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* ==============================
+   ANIMATIONS
+   ============================== */
+
+@keyframes pulseBorder {
+  0%   { opacity: 0.6; box-shadow: 0 0 8px var(--accent-soft); }
+  50%  { opacity: 1;   box-shadow: 0 0 14px var(--accent-soft); }
+  100% { opacity: 0.6; box-shadow: 0 0 8px var(--accent-soft); }
+}
+
+@keyframes spinTriangle {
+  0%   { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+/* ==============================
+   RESPONSIVE BREAKPOINTS
+   ============================== */
+
+@media (max-width: 1200px) {
+  .arena-card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 800px) {
+  .arena-card-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 550px) {
+  .arena-root { padding: 26px 16px 140px; }
+  .arena-title { font-size: 26px; }
+}
+
+.arena-card-main {
+  flex: unset;      /* ← THIS FIXES THE LOCK */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;        /* ← CHANGE THIS TO CONTROL SPACING */
+}
+
+.arena-profile-btn,
+.arena-rules-btn {
+  position: fixed;
+  bottom: 28px;
+  padding: 10px 22px;
+  border-radius: 40px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  letter-spacing: 1px;
+  font-size: 14px;
+  z-index: 999999;
+}
+
+.arena-profile-btn {
+  left: 28px;
+}
+
+.arena-rules-btn {
+  right: 28px;
+}
+

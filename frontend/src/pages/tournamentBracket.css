@@ -1,0 +1,259 @@
+/* -------------------------------------------------------
+   GLOBAL
+--------------------------------------------------------*/
+
+.br-root {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: radial-gradient(circle at top, #02222c 0%, #010b12 70%);
+  color: #dffbff;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.br-bg-glow {
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1200px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(0,255,255,0.25) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.br-header {
+  text-align: center;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.br-title {
+  font-size: 46px;
+  font-weight: 600;
+  color: #7cfaff;
+  text-shadow: 0 0 16px #00e8ff;
+  margin-bottom: 8px;
+}
+
+.br-subtitle {
+  font-size: 20px;
+  opacity: 0.85;
+}
+
+/* -------------------------------------------------------
+   DESKTOP BRACKET
+--------------------------------------------------------*/
+
+.br-desktop-wrapper {
+  display: block;
+  margin-top: 20px;
+}
+
+.br-desktop-bracket {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.br-column {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.br-column-label {
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  color: #a8f7ff;
+}
+
+.br-column--current .br-column-label {
+  color: #ffffff;
+  text-shadow: 0 0 8px #00eaff;
+}
+
+/* -------------------------------------------------------
+   MATCH CARD (DESKTOP)
+--------------------------------------------------------*/
+
+.br-match {
+  position: relative;
+  padding: 14px;
+  background: rgba(0, 10, 20, 0.75);
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 0 18px rgba(0,255,255,0.08);
+}
+
+.br-player-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 18px;
+}
+
+.br-player-name {
+  opacity: 0.95;
+}
+
+.br-player-score {
+  opacity: 0.9;
+}
+
+/* WINNER — cyan glow */
+.br-row--winner {
+  color: #7bfdff;
+  text-shadow: 0 0 8px #00eaff;
+  font-weight: 600;
+}
+
+/* LOSER — greyed */
+.br-row--loser {
+  opacity: 0.40;
+}
+
+/* Placement / payout */
+.br-placement-row {
+  margin: 4px 0 10px 0;
+  font-size: 14px;
+  opacity: 0.7;
+  color: #9eeaff;
+}
+
+/* In-progress badge */
+.br-status-row {
+  margin-top: 4px;
+  color: #ffdf5f;
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 0 0 6px rgba(255,200,0,0.3);
+}
+
+/* Vertical & horizontal connectors (aesthetic) */
+.br-match-lines {
+  position: absolute;
+  left: -18px;
+  top: 20px;
+  width: 16px;
+  height: 100%;
+}
+
+.br-line-vert {
+  width: 2px;
+  height: 100%;
+  background: rgba(0,255,255,0.25);
+}
+
+.br-line-horiz {
+  position: absolute;
+  left: 2px;
+  top: 24px;
+  width: 14px;
+  height: 2px;
+  background: rgba(0,255,255,0.25);
+}
+
+/* -------------------------------------------------------
+   MOBILE MODE (hidden by default)
+--------------------------------------------------------*/
+
+.br-mobile-wrapper {
+  display: none; /* Hidden until < 768px */
+  margin-top: 20px;
+  padding-bottom: 60px;
+}
+
+.br-mobile-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 0 6px;
+}
+
+.br-mobile-round {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.br-mobile-round-note {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Mobile match container */
+.br-mobile-match {
+  width: 100%;
+  background: rgba(0,10,20,0.7);
+  border: 1px solid rgba(0,255,255,0.18);
+  padding: 14px;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.br-mobile-player-block {
+  margin-bottom: 6px;
+}
+
+.br-mobile-player-name-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.br-mobile-player-name {
+  font-size: 17px;
+}
+
+.br-mobile-score {
+  opacity: 0.85;
+}
+
+/* Winner / loser styling (mobile) */
+.br-mobile-player-name-row.br-row--winner {
+  color: #7bfdff;
+  font-weight: 600;
+  text-shadow: 0 0 8px #00eaff;
+}
+
+.br-mobile-player-name-row.br-row--loser {
+  opacity: 0.35;
+}
+
+/* Payout row (mobile) */
+.br-placement-row--mobile {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Mobile status colors */
+.br-mobile-status--inprogress {
+  color: #ffdf5f;
+  font-weight: 600;
+}
+
+.br-mobile-status--finished {
+  color: #7bfdff;
+}
+
+/* -------------------------------------------------------
+   RESPONSIVE BREAKPOINT
+--------------------------------------------------------*/
+
+@media (max-width: 768px) {
+  .br-desktop-wrapper {
+    display: none;
+  }
+  .br-mobile-wrapper {
+    display: block;
+  }
+}
