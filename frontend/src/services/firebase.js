@@ -144,3 +144,9 @@ export async function saveFcmTokenToUser(uid, token) {
     console.error("Failed to save FCM token:", err.message);
   }
 }
+
+// Expose for testing in DevTools
+if (typeof window !== "undefined") {
+  window.requestFcmToken = requestFcmToken;
+  window.subscribeToForegroundMessages = subscribeToForegroundMessages;
+}
