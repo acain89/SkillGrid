@@ -1,10 +1,12 @@
-
-console.log("🔥 FIREBASE JS LOADED");
+// ------------------------------------------------------------
+// Logging for debugging
+// ------------------------------------------------------------
 console.log("Vite ENV:", import.meta.env);
 console.log("VAPID KEY:", import.meta.env.VITE_FCM_VAPID_KEY);
 
-
-// frontend/src/services/firebase.js
+// ------------------------------------------------------------
+// Firebase imports
+// ------------------------------------------------------------
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
@@ -16,7 +18,7 @@ import {
 } from "firebase/messaging";
 
 // ------------------------------------------------------------
-// Correct Firebase Config
+// Firebase Config
 // ------------------------------------------------------------
 const firebaseConfig = {
   apiKey: "AIzaSyBTZHVlHQe7WZN6qt6HkhEBwE0kN-F6VAE",
@@ -28,27 +30,23 @@ const firebaseConfig = {
 };
 
 // ------------------------------------------------------------
+// Initialization
+// ------------------------------------------------------------
 const app = initializeApp(firebaseConfig);
-
-// --- Auth & Firestore ---
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
 
 // ------------------------------------------------------------
-//     FIREBASE CLOUD MESSAGING (FRONTEND)
+// Messaging
 // ------------------------------------------------------------
-
 let messagingPromise = null;
 
 export async function getMessagingInstance() {
   if (!messagingPromise) {
     messagingPromise = (async () => {
       const supported = await isSupported();
-      if (!supported) {
-        console.warn("FCM not supported in this environment.");
-        return null;
-      }
+      if (!supported) return null;
       return getMessaging(app);
     })();
   }
@@ -62,69 +60,39 @@ export async function requestFcmToken() {
   try {
     const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
     if (!vapidKey) {
-      console.warn("Missing VITE_FCM_VAPID_KEY in environment.");
+      console.warn("Missing VAPID key.");
       return null;
     }
-
     const token = await getToken(messaging, { vapidKey });
-
-    if (token) {
-      console.log("FCM Token:", token.slice(0, 14) + "…");
-      return token;
-    } else {
-      console.warn("User blocked notifications or token unavailable.");
-      return null;
-    }
+    console.log("FCM Token:", token);
+    return token;
   } catch (err) {
-    console.warn("Error retrieving FCM token:", err.message);
+    console.error("Token error:", err);
     return null;
   }
 }
 
-// ------------------------------------------------------------
-// Save token under users/{uid}/pushTokens/{token}
-// ------------------------------------------------------------
 export async function saveFcmTokenToUser(uid, token) {
   try {
     const ref = doc(db, "users", uid, "pushTokens", token);
     await setDoc(ref, { createdAt: Date.now() }, { merge: true });
-    console.log("Saved FCM token to user:", uid);
+    console.log("Token saved:", uid);
   } catch (err) {
-    console.error("Failed to save FCM token:", err.message);
+    console.error("Save error:", err);
   }
 }
 
-// ------------------------------------------------------------
-// Foreground message listener
-// ------------------------------------------------------------
 export async function subscribeToForegroundMessages(callback) {
   const messaging = await getMessagingInstance();
   if (!messaging) return;
 
   onMessage(messaging, (payload) => {
-    console.log("[FCM] Foreground message:", payload);
-
-    const { title, body } = payload.notification || {};
-    const route = payload.data?.route;
-
-    if (title || body) {
-      const n = new Notification(title || "SkillGrid Alert", {
-        body: body || "",
-        data: { route },
-      });
-
-      n.onclick = () => {
-        if (route) window.location.href = route;
-      };
-    }
-
+    console.log("[FCM] Foreground:", payload);
     callback?.(payload);
   });
 }
 
-// ------------------------------------------------------------
-// Expose for browser console testing
-// ------------------------------------------------------------
+// DevTools helpers
 if (typeof window !== "undefined") {
   window.requestFcmToken = requestFcmToken;
   window.subscribeToForegroundMessages = subscribeToForegroundMessages;
