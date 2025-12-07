@@ -1,3 +1,7 @@
+console.log("Vite ENV:", import.meta.env);
+console.log("VAPID KEY:", import.meta.env.VITE_FCM_VAPID_KEY);
+
+
 // frontend/src/services/firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
