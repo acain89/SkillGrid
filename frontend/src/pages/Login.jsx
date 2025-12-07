@@ -6,7 +6,7 @@ import { playSound } from "../core/sound";
 
 import {
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithPopup
 } from "firebase/auth";
 
 import { auth, db, googleProvider } from "../services/firebase";
@@ -22,6 +22,9 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  /* -------------------------------------------------------
+     EMAIL/PASSWORD LOGIN
+  ------------------------------------------------------- */
   async function handleEmailLogin(e) {
     e.preventDefault();
     setError("");
@@ -33,14 +36,24 @@ export default function Login() {
       const user = cred.user;
 
       const userDoc = doc(db, "users", user.uid);
-      const snap = await getDoc(userDoc);
+      let snap = null;
 
-      if (!snap.exists()) {
-        await setDoc(userDoc, {
-          username: user.displayName || null,
-          email: user.email,
-          createdAt: Date.now(),
-        });
+      try {
+        snap = await getDoc(userDoc);
+      } catch (err) {
+        console.warn("Firestore read failed:", err);
+      }
+
+      if (!snap || !snap.exists()) {
+        try {
+          await setDoc(userDoc, {
+            username: user.displayName || null,
+            email: user.email,
+            createdAt: Date.now(),
+          });
+        } catch (err) {
+          console.warn("Firestore write failed:", err);
+        }
       }
 
       navigate("/home");
@@ -51,6 +64,9 @@ export default function Login() {
     }
   }
 
+  /* -------------------------------------------------------
+     GOOGLE LOGIN (FIXED — NO UI BREAKS)
+  ------------------------------------------------------- */
   async function handleGoogleLogin() {
     setError("");
     setBusy(true);
@@ -60,35 +76,54 @@ export default function Login() {
       const cred = await signInWithPopup(auth, googleProvider);
       const user = cred.user;
 
-      const userDoc = doc(db, "users", user.uid);
-      const snap = await getDoc(userDoc);
+      let snap = null;
 
-      if (!snap.exists() || !snap.data().username) {
-        let finalUsername = "";
+      // Try reading Firestore user doc (DON'T break UI if it fails)
+      try {
+        snap = await getDoc(doc(db, "users", user.uid));
+      } catch (err) {
+        console.warn("Firestore read failed:", err);
+      }
 
-        while (!finalUsername) {
-          const a = window.prompt("Choose a username:", "");
-          if (a === null) throw new Error("Username required.");
-          finalUsername = a.trim();
+      // If user doc missing OR username missing → create
+      if (!snap || !snap.exists() || !snap.data().username) {
+        let finalUsername = user.displayName || "";
+
+        // If missing username → prompt
+        if (!finalUsername) {
+          while (!finalUsername) {
+            const namePrompt = window.prompt("Choose a username:", "");
+            if (namePrompt === null) throw new Error("Username required.");
+            finalUsername = namePrompt.trim();
+          }
         }
 
         const lower = finalUsername.toLowerCase();
+        const userDoc = doc(db, "users", user.uid);
         const nameDocRef = doc(db, "usernames", lower);
 
-        if ((await getDoc(nameDocRef)).exists()) {
-          throw new Error("That username is already taken.");
+        try {
+          // Check if username taken
+          const nameSnap = await getDoc(nameDocRef);
+          if (nameSnap.exists()) {
+            throw new Error("That username is already taken.");
+          }
+
+          await setDoc(userDoc, {
+            username: finalUsername,
+            email: user.email,
+            createdAt: Date.now(),
+          });
+
+          await setDoc(nameDocRef, { uid: user.uid });
+        } catch (err) {
+          console.warn("Firestore write failed:", err);
         }
-
-        await setDoc(userDoc, {
-          username: finalUsername,
-          email: user.email,
-          createdAt: Date.now(),
-        });
-
-        await setDoc(nameDocRef, { uid: user.uid });
       }
 
+      // LOGIN SUCCESSFUL → MOVE TO HOME
       navigate("/home");
+
     } catch (err) {
       setError(err.message || "Google login failed.");
     } finally {
@@ -96,6 +131,9 @@ export default function Login() {
     }
   }
 
+  /* -------------------------------------------------------
+     JSX RETURN
+  ------------------------------------------------------- */
   return (
     <div className="auth-root">
       <div className="auth-triangle"></div>

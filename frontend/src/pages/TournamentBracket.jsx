@@ -1,362 +1,451 @@
-// src/pages/Tournament.jsx
-import React, { useMemo, useState, useEffect } from "react";
+// frontend/src/pages/TournamentBracket.jsx
+
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "./tournamentBracket.css";
-import { playSound } from "../core/sound";
-import { awardTournamentResult } from "../services/profileLogic";
 
-const CLICK_SOUND = "/sounds/ui-click.mp3";
-const CURRENT_USER_ID = "p_you";
+/*
+  EXPECTED BACKEND RESPONSE SHAPE (adjust to your API):
 
-/* ---------------------------------------------
-   FORMAT CONFIG
---------------------------------------------- */
-const FORMAT_CONFIG = {
-  flattened: {
-    label: "FLATTENED BRACKET — LIVE",
-    payouts: {
-      first: 80,
-      second: 60,
-      thirdFourth: 40,
-      fifthToEighth: 25,
-      others: 0,
-    },
-  },
-  competitive: {
-    label: "COMPETITIVE BRACKET — LIVE",
-    payouts: {
-      first: 160,
-      second: 100,
-      thirdFourth: 30,
-      fifthToEighth: 0,
-      others: 0,
-    },
-  },
-  wta: {
-    label: "WINNER-TAKES-ALL BRACKET — LIVE",
-    payouts: {
-      first: 320,
-      second: 0,
-      thirdFourth: 0,
-      fifthToEighth: 0,
-      others: 0,
-    },
-  },
-};
+  GET /api/tournament/:tid  (or /api/tournaments/:tid/view) -> returns either:
 
-/* ---------------------------------------------
-   MOCK BRACKET DATA
---------------------------------------------- */
-const MOCK_ROUNDS = [
+  { ok: true, bracket: { ... } }
+  or
+  { ...bracketFields }
+
+  Bracket object:
+
   {
-    id: 1,
-    label: "Round 1 – 16 players",
-    matches: [
-      {
-        id: "r1m1",
-        roundIndex: 0,
-        playerA: { id: "p_you", name: "You" },
-        playerB: { id: "p2", name: "Opponent 2" },
-        score: { a: 2, b: 0 },
-        status: "finished",
-        winner: "A",
-      },
-      {
-        id: "r1m2",
-        roundIndex: 0,
-        playerA: { id: "p3", name: "Player 3" },
-        playerB: { id: "p4", name: "Player 4" },
-        score: { a: 2, b: 1 },
-        status: "finished",
-        winner: "A",
-      },
-      // … keep the rest of your match data unchanged
+    id: string,
+    name: string,
+    lane: {
+      tierLabel: "Casual" | "Pro" | "WTA",
+      entryFee: number,          // 5, 10, 20 etc
+      potSize: number,           // 320
+      formatLabel: string,       // e.g. "Flattened", "Competitive", "Winner Takes All"
+      paidPlaces: number,        // e.g. 8 for Casual, 4 for Pro, 1 for WTA
+      payouts: [                 // ordered by place
+        { place: 1, amount: 80 },
+        { place: 2, amount: 60 },
+        { place: 3, amount: 40 },
+        { place: 4, amount: 40 },
+        { place: 5, amount: 25 },
+        ...
+      ]
+    },
+
+    state: "waiting_for_players" | "countdown" | "in_progress" | "completed",
+    currentRoundIndex: number,   // 0..3
+    totalRounds: 4,              // always 4 for 16-player bracket
+    countdown: {
+      phase: "tournament_start" | "between_rounds" | null,
+      endsAt: string | null      // ISO timestamp for when countdown hits 0
+    },
+
+    players: [
+      { id: "uid1", name: "Player 1" },
+      ...
     ],
-  },
-  {
-    id: 2,
-    label: "Round 2 – 8 players",
-    matches: [],
-  },
-  {
-    id: 3,
-    label: "Round 3 – 4 players",
-    matches: [],
-  },
-  {
-    id: 4,
-    label: "Round 4 – Final",
-    matches: [
-      {
-        id: "r4m1",
-        roundIndex: 3,
-        playerA: { id: "f1a", name: "Winner Semi 1" },
-        playerB: { id: "f1b", name: "Winner Semi 2" },
-        score: { a: 2, b: 0 },
-        status: "finished",
-        winner: "A",
-      },
+
+    // rounds[roundIndex][matchIndex]
+    rounds: [
+      [
+        {
+          matchIndex: 0,
+          playerAId: string | null,
+          playerBId: string | null,
+          winnerId: string | null,
+          status: "pending" | "ready" | "in_progress" | "complete"
+        },
+        ...
+      ],
+      ...
     ],
-  },
-];
 
-/* ---------------------------------------------
-   PLACEMENT HELPER
---------------------------------------------- */
-function getPlacementInfo(formatKey, roundIndex, isWinner, isFinal) {
-  const cfg = FORMAT_CONFIG[formatKey]?.payouts;
-  if (!cfg) return null;
-
-  if (!isWinner) {
-    if (roundIndex === 0) return { label: "9th–16th place", amount: cfg.others };
-    if (roundIndex === 1)
-      return { label: "5th–8th place", amount: cfg.fifthToEighth };
-    if (roundIndex === 2)
-      return { label: "3rd–4th place", amount: cfg.thirdFourth };
-    if (roundIndex === 3) return { label: "2nd place", amount: cfg.second };
+    // embedded "me" context for the logged-in user (optional – UI degrades if missing)
+    me: {
+      playerId: string,
+      eliminated: boolean,
+      currentRoundIndex: number | null,
+      currentMatchIndex: number | null
+    }
   }
+*/
 
-  if (isWinner && isFinal) {
-    return { label: "Champion", amount: cfg.first };
+async function fetchTournament(tid) {
+  // Primary call – matches your existing backend:
+  //   app.use("/api/tournament", tournamentRoutes);
+  //   router.get("/:id", ...)
+  const res = await fetch(`/api/tournament/${tid}`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error("Failed to load tournament.");
   }
+  const body = await res.json();
 
-  return null;
+  // Support both { ok, bracket } and bare bracket
+  if (body && body.ok && body.bracket) return body.bracket;
+  return body;
 }
 
-/* ---------------------------------------------
-   MAIN COMPONENT — CLEAN, FINALLY
---------------------------------------------- */
+const ROUND_LABELS = ["Round of 16", "Quarterfinals", "Semifinals", "Final"];
+
 export default function TournamentBracket() {
-  const { gameType } = useParams();
+  const { tournamentId } = useParams();
   const navigate = useNavigate();
 
-  const formatKey =
-    gameType === "competitive" ||
-    gameType === "wta" ||
-    gameType === "flattened"
-      ? gameType
-      : "flattened";
+  const [tournament, setTournament] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [rounds] = useState(MOCK_ROUNDS);
-  const [currentRoundIndex] = useState(0);
+  // local countdown in seconds (derived from server's endsAt)
+  const [secondsLeft, setSecondsLeft] = useState(null);
 
-  const currentRound = useMemo(
-    () => rounds[currentRoundIndex],
-    [rounds, currentRoundIndex]
-  );
-
-  /* ---------------------------------------------
-     TOURNAMENT COMPLETION DETECTION
-  --------------------------------------------- */
+  /* -------------------------------------------------------
+     LOAD TOURNAMENT SNAPSHOT (polling every 3s)
+  -------------------------------------------------------- */
   useEffect(() => {
-    const finalMatch = rounds[3].matches[0];
-    if (!finalMatch) return;
+    let cancelled = false;
 
-    const done =
-      finalMatch.status === "finished" && finalMatch.winner !== null;
+    async function load() {
+      try {
+        setLoading(true);
+        const data = await fetchTournament(tournamentId);
+        if (!cancelled) {
+          setTournament(data);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Failed to load tournament.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
-    if (!done) return;
+    load();
 
-    const winner =
-      finalMatch.winner === "A" ? finalMatch.playerA : finalMatch.playerB;
+    // Poll every 3s for updates
+    const pollId = setInterval(load, 3000);
 
-    awardTournamentResult({
-      winnerId: winner.id,
-      winnerName: winner.name,
-      format: formatKey,
-    });
+    return () => {
+      cancelled = true;
+      clearInterval(pollId);
+    };
+  }, [tournamentId]);
 
-    alert(`🏆 ${winner.name} wins the tournament!`);
+  /* -------------------------------------------------------
+     COUNTDOWN TIMER (DRIVEN BY server countdown.endsAt)
+  -------------------------------------------------------- */
+  useEffect(() => {
+    if (!tournament || !tournament.countdown || !tournament.countdown.endsAt) {
+      setSecondsLeft(null);
+      return;
+    }
 
-    setTimeout(() => navigate("/home"), 5000);
-  }, [rounds, navigate, formatKey]);
+    const endTime = new Date(tournament.countdown.endsAt).getTime();
 
-  /* ---------------------------------------------
-     RENDER UI
-  --------------------------------------------- */
-  return (
-    <div className="br-root">
-      <div className="br-bg-glow" />
+    function update() {
+      const now = Date.now();
+      const diffMs = endTime - now;
+      const secs = Math.max(0, Math.ceil(diffMs / 1000));
+      setSecondsLeft(secs);
+    }
 
-      <header className="br-header">
-        <h1 className="br-title">{FORMAT_CONFIG[formatKey].label}</h1>
-        <p className="br-subtitle">{currentRound.label}</p>
-      </header>
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [tournament]);
 
-      {/* DESKTOP BRACKET */}
-      <div className="br-desktop-wrapper">
-        <div className="br-desktop-bracket">
-          {rounds.map((round, idx) => (
-            <div
-              key={round.id}
-              className={`br-column ${
-                idx === currentRoundIndex ? "br-column--current" : ""
-              }`}
+  /* -------------------------------------------------------
+     AUTO-NAVIGATION INTO MATCHES
+     - Only if player is alive
+     - Only after countdown completes
+     - Only if state === "in_progress" and match is ready
+  -------------------------------------------------------- */
+  useEffect(() => {
+    if (!tournament) return;
+
+    const { state, currentRoundIndex, rounds, me, countdown } = tournament;
+    if (!me || me.eliminated) return;
+
+    // If we're still in a countdown phase, DO NOT navigate yet.
+    if (countdown && countdown.phase && secondsLeft && secondsLeft > 0) {
+      return;
+    }
+
+    // Need a current match in the current round.
+    if (
+      typeof me.currentRoundIndex === "number" &&
+      typeof me.currentMatchIndex === "number" &&
+      me.currentRoundIndex === currentRoundIndex &&
+      rounds &&
+      rounds[currentRoundIndex]
+    ) {
+      const match = rounds[currentRoundIndex][me.currentMatchIndex];
+      if (!match) return;
+
+      // Only jump into arena when the server marks the match "ready" or "in_progress"
+      if (match.status === "ready" || match.status === "in_progress") {
+        navigate(
+          `/arena/connect4/${tournamentId}/${currentRoundIndex}/${me.currentMatchIndex}`
+        );
+      }
+    }
+  }, [tournament, secondsLeft, navigate, tournamentId]);
+
+  /* -------------------------------------------------------
+     DERIVED VIEW HELPERS
+  -------------------------------------------------------- */
+  const countdownLabel = useMemo(() => {
+    if (!tournament || !tournament.countdown || secondsLeft == null) return null;
+
+    if (!tournament.countdown.phase) return null;
+
+    if (tournament.countdown.phase === "tournament_start") {
+      return `Tournament starts in: ${secondsLeft}s`;
+    }
+
+    if (tournament.countdown.phase === "between_rounds") {
+      return `Next round in: ${secondsLeft}s`;
+    }
+
+    return null;
+  }, [tournament, secondsLeft]);
+
+  const payoutSummary = useMemo(() => {
+    if (!tournament) return null;
+    const { lane } = tournament;
+    if (!lane) return null;
+
+    return {
+      tierLabel: lane.tierLabel,
+      formatLabel: lane.formatLabel,
+      entryFee: lane.entryFee,
+      potSize: lane.potSize,
+      paidPlaces: lane.paidPlaces,
+      payouts: lane.payouts || [],
+    };
+  }, [tournament]);
+
+  if (loading && !tournament) {
+    return (
+      <div className="bracket-page">
+        <div className="bracket-loading">Loading tournament…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bracket-page">
+        <div className="bracket-error">{error}</div>
+      </div>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <div className="bracket-page">
+        <div className="bracket-error">Tournament not found.</div>
+      </div>
+    );
+  }
+
+  const { state, currentRoundIndex, rounds, players, me } = tournament;
+
+  /* -------------------------------------------------------
+     RENDER HELPERS
+  -------------------------------------------------------- */
+  function getPlayerName(id) {
+    if (!id || !players) return "--";
+    const p = players.find((p) => p.id === id);
+    return p ? p.name : "Player";
+  }
+
+  function renderMatchCell(match, idx, roundIdx) {
+    const aName = getPlayerName(match.playerAId);
+    const bName = getPlayerName(match.playerBId);
+
+    const isCurrent =
+      me &&
+      !me.eliminated &&
+      me.currentRoundIndex === roundIdx &&
+      me.currentMatchIndex === idx;
+
+    const winnerName = match.winnerId ? getPlayerName(match.winnerId) : null;
+
+    let statusTag = null;
+    if (match.status === "pending") statusTag = "Pending";
+    else if (match.status === "ready") statusTag = "Ready";
+    else if (match.status === "in_progress") statusTag = "In Progress";
+    else if (match.status === "complete") statusTag = "Complete";
+
+    return (
+      <div
+        key={idx}
+        className={
+          "bracket-match" +
+          (isCurrent ? " bracket-match--mine" : "") +
+          (match.status === "in_progress" ? " bracket-match--live" : "") +
+          (match.status === "complete" ? " bracket-match--complete" : "")
+        }
+      >
+        <div className="bracket-match-header">
+          <span className="bracket-match-label">Match {idx + 1}</span>
+          {statusTag && (
+            <span
+              className={`bracket-match-status bracket-match-status--${match.status}`}
             >
-              <div className="br-column-label">{round.label}</div>
-              <div className="br-column-matches">
-                {round.matches.map((m) => (
-                  <BracketMatch
-                    key={m.id}
-                    match={m}
-                    formatKey={formatKey}
-                  />
-                ))}
+              {statusTag}
+            </span>
+          )}
+        </div>
+
+        <div className="bracket-match-players">
+          <div
+            className={
+              "bracket-player" +
+              (match.winnerId && match.winnerId === match.playerAId
+                ? " bracket-player--winner"
+                : "")
+            }
+          >
+            {aName}
+          </div>
+          <div
+            className={
+              "bracket-player" +
+              (match.winnerId && match.winnerId === match.playerBId
+                ? " bracket-player--winner"
+                : "")
+            }
+          >
+            {bName}
+          </div>
+        </div>
+
+        {winnerName && (
+          <div className="bracket-winner-tag">Winner: {winnerName}</div>
+        )}
+
+        {isCurrent && !me?.eliminated && (
+          <div className="bracket-you-tag">Your match</div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="bracket-page">
+      {/* TOP HEADER */}
+      <div className="bracket-top">
+        <div className="bracket-title">
+          {tournament.name || "SkillGrid Tournament"}
+        </div>
+
+        <div className="bracket-meta">
+          {payoutSummary && (
+            <>
+              <span className="bracket-pill">
+                {payoutSummary.tierLabel} • {payoutSummary.formatLabel}
+              </span>
+              <span className="bracket-pill">
+                Entry: ${payoutSummary.entryFee}
+              </span>
+              <span className="bracket-pill">
+                Pot: ${payoutSummary.potSize}
+              </span>
+              <span className="bracket-pill">
+                Places paid: {payoutSummary.paidPlaces}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* 🔹 Game order line for clarity */}
+        <div className="bracket-game-order">
+          Game order: Connect 4 → Checkers → Grid-Trap (best of 3 each)
+        </div>
+
+        {countdownLabel && (
+          <div className="bracket-countdown">{countdownLabel}</div>
+        )}
+
+        {state === "completed" && (
+          <div className="bracket-state-tag">Tournament completed</div>
+        )}
+      </div>
+
+      {/* MAIN LAYOUT: BRACKET + PAYOUTS */}
+      <div className="bracket-main">
+        {/* BRACKET COLUMNS (desktop) / stacks (mobile via CSS) */}
+        <div className="bracket-columns">
+          {rounds.map((roundMatches, roundIdx) => (
+            <div
+              key={roundIdx}
+              className={
+                "bracket-round" +
+                (roundIdx === currentRoundIndex
+                  ? " bracket-round--current"
+                  : "")
+              }
+            >
+              <div className="bracket-round-header">
+                {ROUND_LABELS[roundIdx] || `Round ${roundIdx + 1}`}
+              </div>
+              <div className="bracket-round-body">
+                {roundMatches.map((m, i) => renderMatchCell(m, i, roundIdx))}
               </div>
             </div>
           ))}
-          <div className="br-connector-layer" />
-        </div>
-      </div>
-
-      {/* MOBILE */}
-      <main className="br-mobile-wrapper">
-        <div className="br-mobile-header">
-          <span className="br-mobile-round">{currentRound.label}</span>
-          <span className="br-mobile-round-note">Showing current round only</span>
         </div>
 
-        <div className="br-mobile-match-list">
-          {currentRound.matches.map((m) => (
-            <MobileMatchLine
-              key={m.id}
-              match={m}
-              formatKey={formatKey}
-              onClick={() => playSound(CLICK_SOUND, 0.4)}
-            />
-          ))}
-        </div>
-      </main>
-    </div>
-  );
-}
+        {/* PAYOUT SUMMARY PANEL */}
+        {payoutSummary && (
+          <div className="bracket-sidebar">
+            <div className="bracket-sidebar-card">
+              <div className="bracket-sidebar-title">Payouts</div>
+              <div className="bracket-payout-list">
+                {payoutSummary.payouts.map((p) => (
+                  <div key={p.place} className="bracket-payout-row">
+                    <span className="bracket-payout-place">
+                      {p.place === 1
+                        ? "1st"
+                        : p.place === 2
+                        ? "2nd"
+                        : p.place === 3
+                        ? "3rd"
+                        : `${p.place}th`}
+                    </span>
+                    <span className="bracket-payout-amount">${p.amount}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-/* ---------------------------------------------
-   SUBCOMPONENTS
---------------------------------------------- */
-
-function BracketMatch({ match, formatKey }) {
-  const { playerA, playerB, score, status, winner, roundIndex } = match;
-
-  const isFinal = roundIndex === 3;
-  const isAWinner = winner === "A";
-  const isBWinner = winner === "B";
-
-  const placementA =
-    status === "finished"
-      ? getPlacementInfo(formatKey, roundIndex, isAWinner, isFinal)
-      : null;
-
-  const placementB =
-    status === "finished"
-      ? getPlacementInfo(formatKey, roundIndex, isBWinner, isFinal)
-      : null;
-
-  return (
-    <div className="br-match">
-      <div className="br-match-body">
-        {/* PLAYER A */}
-        <div
-          className={`br-player-row ${
-            status === "finished"
-              ? isAWinner
-                ? "br-row--winner"
-                : "br-row--loser"
-              : ""
-          }`}
-        >
-          <span className="br-player-name">{playerA.name}</span>
-          {status === "finished" && (
-            <span className="br-player-score">
-              {score.a}–{score.b}
-            </span>
-          )}
-        </div>
-
-        {placementA && (
-          <div className="br-placement-row">
-            {placementA.label} — ${placementA.amount}
-          </div>
-        )}
-
-        {/* PLAYER B */}
-        <div
-          className={`br-player-row ${
-            status === "finished"
-              ? isBWinner
-                ? "br-row--winner"
-                : "br-row--loser"
-              : ""
-          }`}
-        >
-          <span className="br-player-name">{playerB.name}</span>
-          {status === "finished" && (
-            <span className="br-player-score">
-              {score.b}–{score.a}
-            </span>
-          )}
-        </div>
-
-        {placementB && (
-          <div className="br-placement-row">
-            {placementB.label} — ${placementB.amount}
+            {me && me.eliminated && (
+              <div className="bracket-sidebar-card bracket-sidebar-card--info">
+                <div className="bracket-sidebar-title">
+                  You’ve been eliminated
+                </div>
+                <p className="bracket-text-sm">
+                  You can return to the arena home and join another
+                  tournament.
+                </p>
+                <button
+                  className="bracket-button"
+                  onClick={() => navigate("/home")}
+                >
+                  Back to Tournament Home
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function MobileMatchLine({ match, formatKey, onClick }) {
-  const { playerA, playerB, status, score, winner, roundIndex } = match;
-
-  const isFinal = roundIndex === 3;
-
-  const placementA =
-    status === "finished"
-      ? getPlacementInfo(formatKey, roundIndex, winner === "A", isFinal)
-      : null;
-
-  const placementB =
-    status === "finished"
-      ? getPlacementInfo(formatKey, roundIndex, winner === "B", isFinal)
-      : null;
-
-  return (
-    <button className="br-mobile-match" onClick={onClick}>
-      <div className="br-mobile-line">
-        <div className="br-mobile-player-block">
-          <div className="br-mobile-player-name-row">
-            {playerA.name}
-            {status === "finished" && (
-              <span className="br-mobile-score">
-                {score.a}–{score.b}
-              </span>
-            )}
-          </div>
-
-          {placementA && (
-            <div className="br-placement-row br-placement-row--mobile">
-              {placementA.label} — ${placementA.amount}
-            </div>
-          )}
-
-          <div className="br-mobile-player-name-row">
-            {playerB.name}
-            {status === "finished" && (
-              <span className="br-mobile-score">
-                {score.b}–{score.a}
-              </span>
-            )}
-          </div>
-
-          {placementB && (
-            <div className="br-placement-row br-placement-row--mobile">
-              {placementB.label} — ${placementB.amount}
-            </div>
-          )}
-        </div>
-      </div>
-    </button>
   );
 }

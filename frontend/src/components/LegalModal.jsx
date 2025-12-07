@@ -32,7 +32,16 @@ export default function LegalModal({ variant, isOpen, onClose }) {
           {doc.sections.map((section, idx) => (
             <section key={idx} className="legal-section">
               <h3 className="legal-section-heading">{section.heading}</h3>
-              <p className="legal-section-body">{section.body}</p>
+
+              {Array.isArray(section.body) ? (
+                section.body.map((paragraph, pIdx) => (
+                  <p key={pIdx} className="legal-section-body">
+                    {paragraph}
+                  </p>
+                ))
+              ) : (
+                <p className="legal-section-body">{section.body}</p>
+              )}
             </section>
           ))}
         </div>

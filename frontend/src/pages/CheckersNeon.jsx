@@ -1,18 +1,33 @@
-// frontend/src/pages/CheckersNeon.jsx
+// src/pages/CheckersNeon.jsx
+
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import CheckersBoard from "../components/CheckersBoard";
+import WinnerBanner from "../components/WinnerBanner";
+import ChatBox from "../components/ChatBox.jsx";
 import { createMatch } from "../core/gameEngine";
 import { applyMove as engineMove } from "../core/engines/checkers.js";
+
 import "./checkers.css";
-import ChatBox from "../components/ChatBox.jsx";
 
-
-const MOVE_TIME = 20; // seconds
+const MOVE_TIME = 20;
 const PLAYERS = ["Player 1", "Player 2"];
 
 export default function CheckersNeon() {
+  const navigate = useNavigate();
+  const { tournamentId, roundIndex: roundParam, matchIndex: matchParam } =
+    useParams();
+  const [searchParams] = useSearchParams();
+
+  // Triathlon set score coming into Checkers
+  const incomingSeriesP1 = Number(searchParams.get("s1") || 0);
+  const incomingSeriesP2 = Number(searchParams.get("s2") || 0);
+
+  const roundIndex = Number(roundParam || 0);
+  const matchIndex = Number(matchParam || 0);
+
   const [match, setMatch] = useState(() => createMatch("checkers"));
-  const [round, setRound] = useState(1);
+  const [round, setRound] = useState(1); // Bo3 rounds 1–3
   const [wins, setWins] = useState({ p1: 0, p2: 0 });
   const [matchWinnerIndex, setMatchWinnerIndex] = useState(null);
 
@@ -23,21 +38,21 @@ export default function CheckersNeon() {
   const [lastMove, setLastMove] = useState(null);
   const [lastCapture, setLastCapture] = useState(null);
 
+  const [nextGameCountdown, setNextGameCountdown] = useState(null);
+
   const timerRef = useRef(null);
+  const nextGameTimerRef = useRef(null);
 
   const currentPlayerIndex =
-    match && typeof match.currentPlayerIndex === "number"
+    typeof match?.currentPlayerIndex === "number"
       ? match.currentPlayerIndex
       : 0;
 
-  /* -------------------- TIMER -------------------- */
+  /* ---------------- TIMER ---------------- */
   useEffect(() => {
     if (matchWinnerIndex !== null) return;
 
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+    clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
       setTimer((prev) => {
@@ -50,52 +65,50 @@ export default function CheckersNeon() {
     }, 1000);
 
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      clearInterval(timerRef.current);
+      clearInterval(nextGameTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPlayerIndex, matchWinnerIndex]);
 
-  const handleTimeout = () => {
-    if (!match || matchWinnerIndex !== null) return;
+  function handleTimeout() {
+    if (matchWinnerIndex !== null) return;
 
-    const timedOutIndex = currentPlayerIndex;
-    const opponent = timedOutIndex === 0 ? 1 : 0;
+    const loserIndex = currentPlayerIndex;
+    const opponent = loserIndex === 0 ? 1 : 0;
 
     setTimeouts((prev) => {
-      const key = timedOutIndex === 0 ? "p1" : "p2";
+      const key = loserIndex === 0 ? "p1" : "p2";
       const updated = { ...prev, [key]: prev[key] + 1 };
-      const count = updated[key];
 
-      if (count >= 3) {
+      if (updated[key] >= 3) {
+        const winKey = opponent === 0 ? "p1" : "p2";
+
         setMatchWinnerIndex(opponent);
-        setWins((w) => {
-          const winKey = opponent === 0 ? "p1" : "p2";
-          return { ...w, [winKey]: w[winKey] + 1 };
-        });
-        setTimeoutLoser(timedOutIndex);
+        setWins((w) => ({ ...w, [winKey]: w[winKey] + 1 }));
+        setTimeoutLoser(loserIndex);
+
+        handleSetOver(opponent);
         return updated;
       }
 
+      // Skip turn
       setMatch((prevMatch) => {
         if (!prevMatch) return prevMatch;
         return {
           ...prevMatch,
           currentPlayerIndex:
-            prevMatch.currentPlayerIndex === 0 ? 1 : 0
+            prevMatch.currentPlayerIndex === 0 ? 1 : 0,
         };
       });
-      setTimer(MOVE_TIME);
 
+      setTimer(MOVE_TIME);
       return updated;
     });
-  };
+  }
 
-  /* -------------------- MOVES -------------------- */
-
-  const handleMove = (fromRow, fromCol, toRow, toCol) => {
+  /* ---------------- HANDLE MOVE ---------------- */
+  function handleMove(fromRow, fromCol, toRow, toCol) {
     if (!match || matchWinnerIndex !== null) return;
 
     try {
@@ -103,19 +116,17 @@ export default function CheckersNeon() {
         fromRow,
         fromCol,
         toRow,
-        toCol
+        toCol,
       });
 
-      if (!result || !result.nextMatch) {
-        return;
-      }
+      if (!result || !result.nextMatch) return;
 
       const nextMatch = result.nextMatch;
+
       setMatch(nextMatch);
       setTimer(MOVE_TIME);
       setLastMove({ fromRow, fromCol, toRow, toCol });
 
-      // capture can be an array now
       const caps = result.event?.capture || null;
       let captureCell = null;
       if (Array.isArray(caps) && caps.length > 0) {
@@ -123,130 +134,150 @@ export default function CheckersNeon() {
       }
       setLastCapture(captureCell);
 
-      if (result.event && typeof result.event.winner === "number") {
+      if (result.event?.winner !== undefined) {
         const winIdx = result.event.winner;
+        const updatedWins = {
+          p1: wins.p1 + (winIdx === 0 ? 1 : 0),
+          p2: wins.p2 + (winIdx === 1 ? 1 : 0),
+        };
+
         setMatchWinnerIndex(winIdx);
-        setWins((prev) => {
-          const key = winIdx === 0 ? "p1" : "p2";
-          return { ...prev, [key]: prev[key] + 1 };
-        });
+        setWins(updatedWins);
+
+        const p1Wins = updatedWins.p1;
+        const p2Wins = updatedWins.p2;
+
+        if (p1Wins === 2 || p2Wins === 2) {
+          handleSetOver(p1Wins > p2Wins ? 0 : 1);
+        } else {
+          // New round inside Checkers set
+          setRound((r) => r + 1);
+          const newMatch = createMatch("checkers");
+          setMatch(newMatch);
+          setTimer(MOVE_TIME);
+          setTimeouts({ p1: 0, p2: 0 });
+          setTimeoutLoser(null);
+          setLastMove(null);
+          setLastCapture(null);
+        }
       }
     } catch (err) {
-      console.error("Checkers engine move failed:", err);
+      console.error("Checkers move failed:", err);
     }
-  };
+  }
 
-  const handleResetRound = () => {
+  /* ---------------- SET OVER → move to Grid-Trap ---------------- */
+  function handleSetOver(winnerIndex) {
+    playSound("/sounds/match-win.mp3");
+
+    // Update triathlon series
+    const nextSeriesP1 = incomingSeriesP1 + (winnerIndex === 0 ? 1 : 0);
+    const nextSeriesP2 = incomingSeriesP2 + (winnerIndex === 1 ? 1 : 0);
+
+    if (!tournamentId) {
+      return;
+    }
+
+    let remaining = 5;
+    setNextGameCountdown(remaining);
+
+    clearInterval(nextGameTimerRef.current);
+    nextGameTimerRef.current = setInterval(() => {
+      remaining -= 1;
+      setNextGameCountdown(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(nextGameTimerRef.current);
+        navigate(
+          `/match/${tournamentId}/${roundIndex}/${matchIndex}/gridtrap?s1=${nextSeriesP1}&s2=${nextSeriesP2}`
+        );
+      }
+    }, 1000);
+  }
+
+  /* ---------------- NEXT ROUND RESET (button / timeout popup) ---------------- */
+  function handleResetRound() {
     const newMatch = createMatch("checkers");
+
     setMatch(newMatch);
     setTimer(MOVE_TIME);
     setMatchWinnerIndex(null);
+
     setTimeouts({ p1: 0, p2: 0 });
     setTimeoutLoser(null);
+
     setLastMove(null);
     setLastCapture(null);
-    setRound((r) => r + 1);
-  };
 
+    setRound((r) => r + 1);
+  }
+
+  /* ---------------- UI ---------------- */
   return (
     <div className="checkers-page">
+      {matchWinnerIndex !== null && (
+        <WinnerBanner
+          text={`${PLAYERS[matchWinnerIndex]} wins the Checkers set!${
+            tournamentId ? " Grid-Trap in 5…" : ""
+          }`}
+          duration={3000}
+        />
+      )}
+
       <div className="checkers-header">
         <h1 className="checkers-title">CHECKERS — TOURNAMENT MATCH</h1>
-        <p className="checkers-subtitle">Round {round} • Best of 3</p>
+        <p className="checkers-subtitle">
+          Set 2 of 3 • Best of 3 rounds
+          {tournamentId && (
+            <span className="t-sub-mini">
+              {" "}
+              • Series: {incomingSeriesP1}–{incomingSeriesP2}
+            </span>
+          )}
+        </p>
       </div>
 
-      {/* PLAYER CARDS (all info lives here) */}
+      {/* PLAYER CARDS */}
       <div className="checkers-player-row">
-        {/* Player 1 = Red */}
-        <div
-          className={
-            "checkers-player-card " +
-            (currentPlayerIndex === 0 && matchWinnerIndex === null
-              ? "active"
-              : "")
+        <PlayerCard
+          label="Player 1"
+          colorClass="red"
+          isActive={currentPlayerIndex === 0 && matchWinnerIndex === null}
+          wins={wins.p1}
+          timer={
+            currentPlayerIndex === 0 && matchWinnerIndex === null
+              ? timer
+              : null
           }
-        >
-          <div className="checkers-card-top">
-            <div className="checkers-player-label">Player 1</div>
-            {currentPlayerIndex === 0 && matchWinnerIndex === null && (
-              <div className="checkers-player-turn-tag">YOUR TURN</div>
-            )}
-          </div>
+        />
 
-          <div className="checkers-card-middle">
-            <div className="checkers-player-wins">
-              Wins: <span>{wins.p1}</span>
-            </div>
-            {currentPlayerIndex === 0 && matchWinnerIndex === null && (
-              <div className="checkers-timer-ring">
-                <div className="checkers-timer-circle">
-                  <span>{timer}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="checkers-card-bottom">
-            <div className="checkers-player-chip-icon red" />
-          </div>
-        </div>
-
-        {/* Player 2 = Black */}
-        <div
-          className={
-            "checkers-player-card " +
-            (currentPlayerIndex === 1 && matchWinnerIndex === null
-              ? "active"
-              : "")
+        <PlayerCard
+          label="Player 2"
+          colorClass="black"
+          isActive={currentPlayerIndex === 1 && matchWinnerIndex === null}
+          wins={wins.p2}
+          timer={
+            currentPlayerIndex === 1 && matchWinnerIndex === null
+              ? timer
+              : null
           }
-        >
-          <div className="checkers-card-top">
-            <div className="checkers-player-label">Player 2</div>
-            {currentPlayerIndex === 1 && matchWinnerIndex === null && (
-              <div className="checkers-player-turn-tag">YOUR TURN</div>
-            )}
-          </div>
-
-          <div className="checkers-card-middle">
-            <div className="checkers-player-wins">
-              Wins: <span>{wins.p2}</span>
-            </div>
-            {currentPlayerIndex === 1 && matchWinnerIndex === null && (
-              <div className="checkers-timer-ring">
-                <div className="checkers-timer-circle">
-                  <span>{timer}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="checkers-card-bottom">
-            <div className="checkers-player-chip-icon black" />
-          </div>
-        </div>
+        />
       </div>
 
       {/* BOARD */}
       <div className="checkers-board-frame">
-  {match && match.game && match.game.board && (
-    <CheckersBoard
-      board={match.game.board}
-      onMove={handleMove}
-      lastMove={lastMove}
-      lastCapture={lastCapture}
-      amIBottom={true}   // 🔥 Perspective locked for local player
-    />
-  )}
-</div>
+        {match?.game?.board && (
+          <CheckersBoard
+            board={match.game.board}
+            onMove={handleMove}
+            lastMove={lastMove}
+            lastCapture={lastCapture}
+            amIBottom={true}
+          />
+        )}
+      </div>
 
-<ChatBox 
-  onSend={(emoji) => {
-    console.log("Sent emoji:", emoji);
-    // FUTURE: socket.io send here
-  }}
-/>
-
-
+      <ChatBox onSend={(emoji) => console.log("Sent emoji:", emoji)} />
 
       {/* TIMEOUT FORFEIT POPUP */}
       {timeoutLoser !== null && (
@@ -255,19 +286,52 @@ export default function CheckersNeon() {
             <h2>Timeout Forfeit</h2>
             <p>
               {timeoutLoser === 0 ? "Player 1 (Red)" : "Player 2 (Black)"} has
-              timed out 3 times and forfeits this game.
+              timed out 3 times and forfeits this round.
             </p>
-            <button
-              className="checkers-modal-btn"
-              onClick={handleResetRound}
-            >
+            <button className="checkers-modal-btn" onClick={handleResetRound}>
               Next Round
             </button>
           </div>
         </div>
       )}
 
-      {/* ROUND WIN POPUP (optional future – currently handled by header/button) */}
+      {matchWinnerIndex !== null && nextGameCountdown !== null && (
+        <div className="next-game-toast">
+          Grid-Trap in {nextGameCountdown}…
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- PLAYER CARD COMPONENT ---------------- */
+function PlayerCard({ label, colorClass, isActive, wins, timer }) {
+  return (
+    <div className={`checkers-player-card ${isActive ? "active" : ""}`}>
+      <div className="checkers-card-top">
+        <div className="checkers-player-label">{label}</div>
+        {isActive && (
+          <div className="checkers-player-turn-tag">YOUR TURN</div>
+        )}
+      </div>
+
+      <div className="checkers-card-middle">
+        <div className="checkers-player-wins">
+          Wins: <span>{wins}</span>
+        </div>
+
+        {isActive && (
+          <div className="checkers-timer-ring">
+            <div className="checkers-timer-circle">
+              <span>{timer}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="checkers-card-bottom">
+        <div className={`checkers-player-chip-icon ${colorClass}`} />
+      </div>
     </div>
   );
 }

@@ -2,12 +2,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./landing.css";
-import { playSound } from "../core/sound";
 import LegalModal from "../components/LegalModal";
 
 const LOGIN_ROUTE = "/login";
 const SIGNUP_ROUTE = "/signup";
-const CLICK_SOUND = "/sounds/ui-click.mp3";
 
 function LoadingScreen() {
   return (
@@ -23,15 +21,15 @@ function LoadingScreen() {
 
 function LandingContent() {
   const navigate = useNavigate();
-  const [legalVariant, setLegalVariant] = useState(null); // "terms" | "privacy" | "legal" | null
+  const [legalVariant, setLegalVariant] = useState(null);
 
   const clickRoute = (route) => {
-    playSound(CLICK_SOUND, 0.5);
+    // removed playSound — was causing crashes
     navigate(route);
   };
 
   const openLegal = (variant) => {
-    playSound(CLICK_SOUND, 0.3);
+    // removed playSound — was causing crashes
     setLegalVariant(variant);
   };
 

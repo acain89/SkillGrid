@@ -230,3 +230,37 @@
   background: rgba(0, 255, 200, 0.2);
   box-shadow: 0 0 14px rgba(0, 255, 200, 0.55);
 }
+
+.profile-root {
+  padding: 16px;
+  color: #e5e7eb;
+}
+
+.profile-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.profile-id-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-username {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.profile-email {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.profile-xp-block {
+  margin-left: auto;
+  min-width: 260px;
+  max-width: 380px;
+}
+

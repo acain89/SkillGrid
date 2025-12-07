@@ -38,6 +38,9 @@ export default function Signup() {
     return { clean, lower, nameDocRef };
   }
 
+  /* -------------------------------------------------------
+     EMAIL/PASSWORD SIGNUP
+  ------------------------------------------------------- */
   async function handleEmailSignup(e) {
     e.preventDefault();
     setError("");
@@ -76,6 +79,9 @@ export default function Signup() {
     }
   }
 
+  /* -------------------------------------------------------
+     GOOGLE SIGNUP WITH USERNAME PROMPT
+  ------------------------------------------------------- */
   async function handleGoogleSignup() {
     setBusy(true);
     setError("");
@@ -88,7 +94,7 @@ export default function Signup() {
       const userDoc = doc(db, "users", user.uid);
       const snap = await getDoc(userDoc);
 
-      let finalUsername = username.trim();
+      let finalUsername = ""; // IMPORTANT FIX (forces prompt if blank)
 
       if (!snap.exists() || !snap.data().username) {
         while (!finalUsername) {

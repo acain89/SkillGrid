@@ -1,0 +1,261 @@
+/* ==========================================================
+   ELIMINATION MODAL — POLISHED NEON VERSION
+   ========================================================== */
+
+/* BACKDROP */
+.elim-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* MODAL CONTAINER */
+.elim-modal {
+  width: 95%;
+  max-width: 450px;
+  background: #06060d;
+  border-radius: 18px;
+  padding: 28px 34px;
+  text-align: center;
+  color: #ffffff;
+  position: relative;
+
+  box-shadow:
+    0 0 25px #00eaff55,
+    0 0 50px #ff007755 inset,
+    0 0 10px #00eaff,
+    0 0 10px #ff0077;
+
+  border: 2px solid #00eaffaa;
+  animation: modalPop 0.25s ease-out;
+}
+
+/* Tier badge */
+.elim-tier-pill {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cccccc;
+}
+
+/* Title */
+.elim-title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+
+  background: linear-gradient(90deg, #00eaff, #ff0077);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  animation: titleGlow 1.8s infinite ease-in-out;
+}
+
+/* Placement number */
+.elim-placement-number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 12px 0;
+  text-shadow:
+    0 0 12px currentColor,
+    0 0 25px currentColor;
+  animation: pulseBig 2s infinite ease-in-out;
+}
+
+/* Main message */
+.elim-sub {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+/* Prize */
+.elim-prize {
+  font-size: 1.3rem;
+  margin-bottom: 14px;
+  color: #ff0077;
+  text-shadow: 0 0 10px #ff007777;
+}
+
+/* Stats */
+.elim-stats {
+  font-size: 0.95rem;
+  margin-top: 8px;
+  margin-bottom: 18px;
+  color: #999;
+}
+
+/* Upsell */
+.elim-upsell {
+  font-size: 0.98rem;
+  color: #c5c5c5;
+  margin-bottom: 18px;
+}
+
+/* Buttons */
+.elim-btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.elim-btn-primary {
+  background: linear-gradient(90deg, #ff0077, #ff55a6);
+  border: none;
+  padding: 14px 0;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 15px #ff0077aa, 0 0 30px #ff007755;
+  transition: 0.18s ease-in-out;
+}
+
+.elim-btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px #ff0077dd, 0 0 40px #ff55a6aa;
+}
+
+.elim-btn-close {
+  background: transparent;
+  border: 1px solid #00eaffaa;
+  padding: 12px 0;
+  border-radius: 12px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #00eaff;
+  transition: 0.17s ease;
+}
+
+.elim-btn-close:hover {
+  background: #00eaff22;
+  transform: scale(1.03);
+}
+
+/* Confetti */
+.elim-confetti-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4999;
+}
+
+.elim-confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 6px;
+  height: 12px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #00eaff, #ff0077);
+  opacity: 0.95;
+  left: var(--confetti-left, 50%);
+  animation: elim-confetti-fall var(--confetti-duration, 2s)
+    linear var(--confetti-delay, 0s) 1;
+}
+
+@keyframes elim-confetti-fall {
+  0% {
+    transform: translateY(0) rotateZ(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotateZ(260deg);
+    opacity: 0;
+  }
+}
+
+/* Rain (elimination mode) */
+.elim-rain-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4999;
+}
+
+.elim-rain-drop {
+  position: absolute;
+  top: -10px;
+  width: 2px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 234, 255, 0.2),
+    rgba(0, 234, 255, 0.7)
+  );
+  opacity: 0.75;
+  left: var(--rain-left, 50%);
+  animation: elim-rain-fall var(--rain-duration, 2.6s)
+    linear var(--rain-delay, 0s) infinite;
+}
+
+@keyframes elim-rain-fall {
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalPop {
+  0%   { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes titleGlow {
+  0%   { text-shadow: 0 0 10px #00eaff; }
+  50%  { text-shadow: 0 0 20px #ff0077; }
+  100% { text-shadow: 0 0 10px #00eaff; }
+}
+
+@keyframes pulseBig {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .elim-modal {
+    padding: 22px 18px;
+  }
+  .elim-title {
+    font-size: 1.6rem;
+  }
+  .elim-placement-number {
+    font-size: 1.9rem;
+  }
+  .elim-tier-pill {
+    top: 10px;
+    right: 12px;
+    font-size: 0.7rem;
+  }
+}

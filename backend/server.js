@@ -2,37 +2,60 @@
 import http from "http";
 import express from "express";
 import cors from "cors";
-import { createTournamentWsServer } from "./tournamentWs.js";  // <-- NEW
+
+// Routes
+import tournamentRoutes, {
+  bindTournamentBroadcast,
+} from "./routes/tournamentRoutes.js";
+
+import xpRoutes from "./routes/xpRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+
+// WebSocket server creator
+import { createTournamentWsServer } from "./tournamentWs.js";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ----------------------
-//  Your REST API routes
-// ----------------------
+// ----------------------------------------------
+// REST API ROUTES
+// ----------------------------------------------
+app.use("/api/tournament", tournamentRoutes);
+app.use("/xp", xpRoutes);
+app.use("/api/notifications", notificationRoutes);
+
+// Root check
 app.get("/", (req, res) => {
   res.json({ ok: true, msg: "SkillGrid backend online." });
 });
 
-// TODO: your existing routes go here:
-// app.use("/api", require("./src/routes/..."))
-
-const PORT = process.env.PORT || 10000;
-
-// ----------------------
-//  Create HTTP server
-// ----------------------
+// ----------------------------------------------
+// Create HTTP server
+// ----------------------------------------------
 const httpServer = http.createServer(app);
 
-// ----------------------
-//  Start WebSocket server
-// ----------------------
-createTournamentWsServer(httpServer);
+// ----------------------------------------------
+// Start WebSocket server + bind broadcast
+// ----------------------------------------------
+const wss = createTournamentWsServer(httpServer);
 
-// ----------------------
-//  Start HTTP + WS
-// ----------------------
+// When tournamentRoutes wants to broadcast an update,
+// it will call the function we bind here.
+bindTournamentBroadcast((data) => {
+  const payload = JSON.stringify(data);
+
+  for (const client of wss.clients) {
+    if (client.readyState === 1) {
+      client.send(payload);
+    }
+  }
+});
+
+// ----------------------------------------------
+// Start backend system
+// ----------------------------------------------
+const PORT = process.env.PORT || 10000;
 httpServer.listen(PORT, () => {
   console.log(`💡 SkillGrid API + WS running on port ${PORT}`);
 });

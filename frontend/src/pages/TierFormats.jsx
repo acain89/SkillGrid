@@ -1,17 +1,26 @@
-// src/pages/TournamentHome.jsx
+// src/pages/TierFormats.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./tournamentArena.css";
 import { playSound } from "../core/sound";
 import { auth, db } from "../services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 import ProfilePanel from "../components/ProfilePanel.jsx";
 import RulesPanel from "../components/RulesPanel.jsx";
 
 const CLICK_SOUND = "/sounds/ui-click.mp3";
 
-export default function TournamentHome() {
+/* -------------------------------------------------------
+   XP IS BASED ON TIER (BUY-IN AMOUNT), NOT FORMAT
+-------------------------------------------------------- */
+const TIER_CONFIG = {
+  rookie: { entryFee: 5, xpAward: 5 },
+  pro: { entryFee: 10, xpAward: 10 },
+  elite: { entryFee: 20, xpAward: 20 },
+};
+
+export default function TierFormats() {
   const navigate = useNavigate();
 
   // RULES + PROFILE MODALS
@@ -32,7 +41,9 @@ export default function TournamentHome() {
     activeTournament: null,
   });
 
-  // LOAD PROFILE
+  /* -------------------------------------------------------
+     LOAD PROFILE ON MOUNT
+  -------------------------------------------------------- */
   useEffect(() => {
     async function loadProfile() {
       const user = auth.currentUser;
@@ -61,9 +72,59 @@ export default function TournamentHome() {
     loadProfile();
   }, []);
 
+  /* -------------------------------------------------------
+     JOIN BUTTON HANDLER
+     formatKey = flattened | competitive | wta
+     tierKey   = rookie | pro | elite
+  -------------------------------------------------------- */
+  async function handleJoin(formatKey, tierKey) {
+    playSound(CLICK_SOUND, 0.5);
+
+    const user = auth.currentUser;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    const tierCfg = TIER_CONFIG[tierKey];
+    if (!tierCfg) {
+      console.warn("Unknown tier:", tierKey);
+      return;
+    }
+
+    try {
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) {
+        console.warn("User doc missing; cannot join tournament.");
+        return;
+      }
+
+      // Store tournament selection for XP logic
+      await updateDoc(ref, {
+        activeTournament: {
+          tier: tierKey,                 // rookie | pro | elite
+          entryFee: tierCfg.entryFee,    // 5 / 10 / 20
+          xpAward: tierCfg.xpAward,      // XP given once game actually starts
+          format: formatKey,             // flattened | competitive | wta
+          joinedAt: Date.now(),
+          entryXpGranted: false,         // Connect4Neon will check this
+        },
+      });
+
+      // Navigate to the bracket page for this format
+      navigate(`/tournament/${formatKey}`);
+    } catch (err) {
+      console.error("Join tournament failed:", err);
+    }
+  }
+
+  /* -------------------------------------------------------
+     RENDER UI
+  -------------------------------------------------------- */
   return (
     <div className="arena-root">
-
       {/* BACK BUTTON */}
       <button
         className="arena-back-btn"
@@ -76,14 +137,11 @@ export default function TournamentHome() {
       </button>
 
       {/* LOGOUT BUTTON */}
-      <button
-        className="arena-logout-btn"
-        onClick={() => navigate("/login")}
-      >
+      <button className="arena-logout-btn" onClick={() => navigate("/login")}>
         Logout
       </button>
 
-      {/* Background glow */}
+      {/* BACKGROUND */}
       <div className="arena-bg-glow"></div>
 
       {/* HEADER */}
@@ -95,17 +153,18 @@ export default function TournamentHome() {
       </header>
 
       <main className="arena-main">
-
+        {/* FORMAT + TIER GRID */}
         <section className="arena-card-grid">
-
-          {/* CASUAL */}
+          {/* CASUAL → Rookie Tier */}
           <article className="arena-card arena-card--cyan">
             <div className="arena-card-inner">
               <div className="arena-card-solid-bar"></div>
 
               <div className="arena-card-header">
                 <h2 className="arena-card-title">CASUAL</h2>
-                <p className="arena-card-subtitle">Friendly game with more prizes.</p>
+                <p className="arena-card-subtitle">
+                  Friendly game with more prizes.
+                </p>
               </div>
 
               <div className="arena-card-main">
@@ -127,19 +186,26 @@ export default function TournamentHome() {
               </div>
 
               <div className="arena-card-footer">
-                <button className="arena-join-btn">JOIN TOURNAMENT</button>
+                <button
+                  className="arena-join-btn"
+                  onClick={() => handleJoin("flattened", "rookie")}
+                >
+                  JOIN TOURNAMENT
+                </button>
               </div>
             </div>
           </article>
 
-          {/* PRO */}
+          {/* PRO → Pro Tier */}
           <article className="arena-card arena-card--orange">
             <div className="arena-card-inner">
               <div className="arena-card-solid-bar"></div>
 
               <div className="arena-card-header">
                 <h2 className="arena-card-title">PRO</h2>
-                <p className="arena-card-subtitle">Classic payout structure for real competition.</p>
+                <p className="arena-card-subtitle">
+                  Classic payout structure for real competition.
+                </p>
               </div>
 
               <div className="arena-card-main">
@@ -160,19 +226,26 @@ export default function TournamentHome() {
               </div>
 
               <div className="arena-card-footer">
-                <button className="arena-join-btn">JOIN TOURNAMENT</button>
+                <button
+                  className="arena-join-btn"
+                  onClick={() => handleJoin("competitive", "pro")}
+                >
+                  JOIN TOURNAMENT
+                </button>
               </div>
             </div>
           </article>
 
-          {/* ELITE */}
+          {/* ELITE → Elite Tier */}
           <article className="arena-card arena-card--magenta">
             <div className="arena-card-inner">
               <div className="arena-card-solid-bar"></div>
 
               <div className="arena-card-header">
                 <h2 className="arena-card-title">ELITE</h2>
-                <p className="arena-card-subtitle">16 players. Only one prize.</p>
+                <p className="arena-card-subtitle">
+                  16 players. Only one prize.
+                </p>
               </div>
 
               <div className="arena-card-main">
@@ -191,11 +264,15 @@ export default function TournamentHome() {
               </div>
 
               <div className="arena-card-footer">
-                <button className="arena-join-btn">JOIN TOURNAMENT</button>
+                <button
+                  className="arena-join-btn"
+                  onClick={() => handleJoin("wta", "elite")}
+                >
+                  JOIN TOURNAMENT
+                </button>
               </div>
             </div>
           </article>
-
         </section>
 
         {/* TRUST CHECKLIST */}
@@ -209,20 +286,23 @@ export default function TournamentHome() {
         </div>
 
         {/* PROFILE & RULES BUTTONS */}
-        <button className="arena-profile-btn" onClick={() => setShowProfile(true)}>
+        <button
+          className="arena-profile-btn"
+          onClick={() => setShowProfile(true)}
+        >
           Profile
         </button>
 
-        <button className="arena-rules-btn" onClick={() => setShowRules(true)}>
+        <button
+          className="arena-rules-btn"
+          onClick={() => setShowRules(true)}
+        >
           Rules
         </button>
-
       </main>
 
       {/* RULES PANEL */}
-      {showRules && (
-        <RulesPanel onClose={() => setShowRules(false)} />
-      )}
+      {showRules && <RulesPanel onClose={() => setShowRules(false)} />}
 
       {/* PROFILE PANEL */}
       {showProfile && (
@@ -237,7 +317,6 @@ export default function TournamentHome() {
           onClose={() => setShowProfile(false)}
         />
       )}
-
     </div>
   );
 }

@@ -1,7 +1,13 @@
 // src/pages/GridTrap.jsx
+
 import React, { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import GridTrapBoard from "../components/GridTrapBoard";
 import GridTrapPlayerCard from "../components/GridTrapPlayerCard";
+import ChatBox from "../components/ChatBox.jsx";
+import EliminationModal from "../components/EliminationModal";
+import WinnerBanner from "../components/WinnerBanner";
+
 import {
   createGridTrapMatch,
   getLegalMoves,
@@ -9,20 +15,123 @@ import {
   applyGridTrapTurn,
   PLAYER,
 } from "../core/engines/gridTrap";
-import "./gridTrap.css";
-import ChatBox from "../components/ChatBox.jsx";
 
+import { auth, db } from "../services/firebase";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+
+import { reportMatchResult } from "../core/tournamentClient";
+
+import "./gridTrap.css";
 
 export default function GridTrap() {
+  const navigate = useNavigate();
+  const { tournamentId, roundIndex: roundParam, matchIndex: matchParam } =
+    useParams();
+  const [searchParams] = useSearchParams();
+
+  // Triathlon set score coming into Grid-Trap
+  const incomingSeriesP1 = Number(searchParams.get("s1") || 0);
+  const incomingSeriesP2 = Number(searchParams.get("s2") || 0);
+
+  const roundIndex = Number(roundParam || 0);
+  const matchIndex = Number(matchParam || 0);
+
   const [match, setMatch] = useState(() => createGridTrapMatch());
   const [phase, setPhase] = useState("move"); // "move" | "block"
   const [selectedMove, setSelectedMove] = useState(null);
   const [error, setError] = useState("");
   const [showRules, setShowRules] = useState(false);
 
-  // simple session wins tracker
+  // Bo3 inside Grid-Trap
   const [wins, setWins] = useState({ [PLAYER.A]: 0, [PLAYER.B]: 0 });
 
+  const [xpGranted, setXpGranted] = useState(false);
+
+  // Elimination modal state
+  const [showElimModal, setShowElimModal] = useState(false);
+  const [finalPlacement, setFinalPlacement] = useState(null);
+  const [finalPrize, setFinalPrize] = useState(0);
+  const [finalStatus, setFinalStatus] = useState(null); // "advance" | "eliminated" | "runner-up" | "champion"
+
+  const [winnerBannerText, setWinnerBannerText] = useState("");
+  const [winnerBannerDuration] = useState(3000);
+
+  /* ---------------- XP HELPERS ---------------- */
+  function getTodayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function normalizeDailyXp(raw) {
+    const todayKey = getTodayKey();
+
+    const base = {
+      dateKey: todayKey,
+      tournamentsToday: 0,
+      threeBonusGranted: false,
+      top4BonusGranted: false,
+    };
+
+    if (!raw) return base;
+    if (raw.dateKey !== todayKey) return base;
+
+    return { ...base, ...raw, dateKey: todayKey };
+  }
+
+  async function awardGridTrapEntryXP() {
+    if (xpGranted) return;
+
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+
+      const data = snap.data();
+      const active = data.activeTournament;
+      if (!active) return;
+
+      if (active.entryXpGrantedGT) {
+        setXpGranted(true);
+        return;
+      }
+
+      const fee = active.entryFee || 0;
+      let xp = 0;
+
+      if (fee >= 20) xp = 20;
+      else if (fee >= 10) xp = 10;
+      else if (fee >= 5) xp = 5;
+
+      let dailyXp = normalizeDailyXp(data.dailyXp);
+      dailyXp.tournamentsToday = (dailyXp.tournamentsToday || 0) + 1;
+
+      let xpDelta = xp;
+
+      if (
+        dailyXp.tournamentsToday >= 3 &&
+        !dailyXp.threeBonusGranted
+      ) {
+        xpDelta += 10;
+        dailyXp.threeBonusGranted = true;
+      }
+
+      const newXp = (data.xp || 0) + xpDelta;
+
+      await updateDoc(ref, {
+        xp: newXp,
+        dailyXp,
+        "activeTournament.entryXpGrantedGT": true,
+      });
+
+      setXpGranted(true);
+    } catch (err) {
+      console.warn("GridTrap XP award failed:", err.message);
+    }
+  }
+
+  /* ---------------- MEMOIZED LEGAL ACTIONS ---------------- */
   const selectableMoves = useMemo(
     () =>
       phase === "move" && !match.winner
@@ -39,17 +148,105 @@ export default function GridTrap() {
     [match, phase]
   );
 
-  // When a winner appears, bump wins once
+  /* ---------------- TRACK WINS + MATCH-END (BO3) ---------------- */
   useEffect(() => {
     if (!match.winner) return;
-    setWins((prev) => ({
-      ...prev,
-      [match.winner]: (prev[match.winner] || 0) + 1,
-    }));
+
+    setWins((prev) => {
+      const updated = {
+        ...prev,
+        [match.winner]: (prev[match.winner] || 0) + 1,
+      };
+
+      const aWins = updated[PLAYER.A] || 0;
+      const bWins = updated[PLAYER.B] || 0;
+
+      if (aWins === 2 || bWins === 2) {
+        handleSetOver(aWins > bWins ? PLAYER.A : PLAYER.B);
+      } else {
+        // Reset for next Grid-Trap board
+        setTimeout(() => {
+          setMatch(createGridTrapMatch());
+          setPhase("move");
+          setSelectedMove(null);
+          setError("");
+          setWinnerBannerText(
+            `Player ${match.winner} wins this Grid-Trap game. Next game in 5…`
+          );
+        }, 500);
+      }
+
+      return updated;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match.winner]);
 
+  /* ---------------- FINAL SET OVER → report to backend ---------------- */
+  async function handleSetOver(setWinner) {
+    const setWinnerSide = setWinner === PLAYER.A ? 0 : 1;
+
+    const finalSeriesP1 =
+      incomingSeriesP1 + (setWinnerSide === 0 ? 1 : 0);
+    const finalSeriesP2 =
+      incomingSeriesP2 + (setWinnerSide === 1 ? 1 : 0);
+
+    const overallWinnerSide =
+      finalSeriesP1 > finalSeriesP2 ? 0 : 1;
+
+    setWinnerBannerText(
+      `Player ${setWinner} wins the Grid-Trap set and the match!`
+    );
+
+    if (!tournamentId) {
+      // Local test mode — no backend call, just banner.
+      return;
+    }
+
+    try {
+      const result = await reportMatchResult({
+        tournamentId,
+        roundIndex,
+        matchIndex,
+        winnerSide: overallWinnerSide,
+        gameType: "gridtrap",
+      });
+
+      const { status, placementLabel, prizeAmount } = result;
+
+      setFinalPlacement(placementLabel || null);
+      setFinalPrize(prizeAmount || 0);
+      setFinalStatus(status);
+
+      if (status === "advance") {
+        // 10 second between-round countdown handled on bracket page.
+        // Just return player to bracket.
+        setTimeout(() => {
+          navigate(`/tournament/${tournamentId}`);
+        }, 3000);
+      } else {
+        // eliminated / runner-up / champion → show elimination modal
+        setTimeout(() => {
+          setShowElimModal(true);
+        }, 1000);
+      }
+    } catch (err) {
+      console.error("Failed to report tournament result:", err);
+      setError("Failed to sync result. Please contact support.");
+    }
+  }
+
+  /* ---------------- ANALYSIS PURCHASE HANDLER ---------------- */
+  function handlePurchaseAnalysis() {
+    console.log("GridTrap analysis purchase clicked");
+    // TODO: Stripe + redirect to /analysis/:tournamentId
+  }
+
+  /* ---------------- CELL CLICK LOGIC ---------------- */
   function handleCellClick(row, col) {
     if (match.winner) return;
+
+    // First valid interaction → award entry XP
+    awardGridTrapEntryXP();
 
     if (phase === "move") {
       const isLegal = selectableMoves.some(
@@ -90,6 +287,7 @@ export default function GridTrap() {
     }
   }
 
+  /* ---------------- RESET HELPERS ---------------- */
   function handleResetBoard() {
     setMatch(createGridTrapMatch());
     setPhase("move");
@@ -101,10 +299,11 @@ export default function GridTrap() {
     setWins({ [PLAYER.A]: 0, [PLAYER.B]: 0 });
   }
 
+  /* ---------------- STATUS TEXT ---------------- */
   const statusText = (() => {
     if (match.winner) {
-      return `Player ${match.winner} wins! ${
-        match.winReason ? `(${match.winReason})` : ""
+      return `Player ${match.winner} wins this board${
+        match.winReason ? ` (${match.winReason})` : ""
       }`;
     }
     return `Player ${match.currentPlayer}'s turn — ${
@@ -115,13 +314,25 @@ export default function GridTrap() {
   const blocksPlacedA = match.blockedByPlayer[PLAYER.A].length;
   const blocksPlacedB = match.blockedByPlayer[PLAYER.B].length;
 
+  const totalRoundsPlayed = (wins[PLAYER.A] || 0) + (wins[PLAYER.B] || 0);
+
   return (
     <div className="gridtrap-page">
+      {winnerBannerText && (
+        <WinnerBanner text={winnerBannerText} duration={winnerBannerDuration} />
+      )}
+
       <div className="gridtrap-header">
         <h1>GRID-TRAP</h1>
         <p className="gridtrap-subtitle">
           Neon maze duel. Start in the center. Trap your opponent in the grid.
         </p>
+        {tournamentId && (
+          <p className="gridtrap-subtitle-small">
+            Set 3 of 3 • Series coming in: {incomingSeriesP1}–
+            {incomingSeriesP2}
+          </p>
+        )}
       </div>
 
       <div className="gridtrap-layout">
@@ -145,15 +356,13 @@ export default function GridTrap() {
           />
         </div>
 
-<ChatBox 
-  onSend={(emoji) => {
-    console.log("Sent emoji:", emoji);
-    // FUTURE: socket.io send here
-  }}
-/>
+        <ChatBox
+          onSend={(emoji) => {
+            console.log("Sent emoji:", emoji);
+          }}
+        />
 
-
-        {/* Right player + controls */}
+        {/* Right column */}
         <div className="gridtrap-right">
           <GridTrapPlayerCard
             player={PLAYER.B}
@@ -206,39 +415,37 @@ export default function GridTrap() {
             ✕
           </button>
         </div>
+
         <div className="gridtrap-rules-body">
           <p>
             <strong>Objective:</strong> Trap your opponent so they have no legal
             moves left.
           </p>
           <ul>
-            <li>
-              The board is 9×9. Both robots start in the center, side by side.
-            </li>
-            <li>
-              At the start of each game, 15–20 static wall tiles appear randomly
-              in the outer rows and columns.
-            </li>
-            <li>
-              On your turn, first move your robot 1 square (up, down, left, or
-              right) onto an empty tile.
-            </li>
-            <li>
-              Then place 1 block on any empty tile. Your first block can be
-              anywhere.
-            </li>
-            <li>
-              After your first block, new blocks must be placed orthogonally
-              adjacent to one of your existing blocks (your chain spreads).
-            </li>
-            <li>
-              You cannot move onto walls, blocked tiles, or the opponent&apos;s
-              tile.
-            </li>
-            <li>If you begin your turn with no legal moves, you lose.</li>
+            <li>The board is 9×9. Both robots start in the center.</li>
+            <li>15–20 static walls appear at game start.</li>
+            <li>Each turn: move → place one block.</li>
+            <li>Blocks must extend from your chain (after first block).</li>
+            <li>You lose if you start a turn with no legal moves.</li>
           </ul>
         </div>
       </div>
+
+      {/* Elimination Modal */}
+      <EliminationModal
+        isOpen={showElimModal}
+        onClose={() => {
+          setShowElimModal(false);
+          navigate("/home"); // tournament home / lobby
+        }}
+        placement={finalPlacement}
+        prize={finalPrize}
+        rounds={totalRoundsPlayed}
+        defeated={totalRoundsPlayed}
+        streak={Math.max(wins[PLAYER.A] || 0, wins[PLAYER.B] || 0)}
+        onPurchase={handlePurchaseAnalysis}
+        tier="casual" // TODO: replace with real tier if needed
+      />
     </div>
   );
 }

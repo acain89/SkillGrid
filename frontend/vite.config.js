@@ -1,19 +1,25 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// ⛔ Disable COOP/COEP so Google OAuth popups can close properly
 export default defineConfig({
   plugins: [react()],
+
   server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
     headers: {
-      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+      "Cross-Origin-Opener-Policy": "unsafe-none",
       "Cross-Origin-Embedder-Policy": "unsafe-none",
-    },
+      "Referrer-Policy": "no-referrer-when-downgrade",
+      "Permissions-Policy": "interest-cohort=()"
+    }
   },
+
   preview: {
     headers: {
-      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
-      "Cross-Origin-Embedder-Policy": "unsafe-none",
-    },
-  },
-})
+      "Cross-Origin-Opener-Policy": "unsafe-none",
+      "Cross-Origin-Embedder-Policy": "unsafe-none"
+    }
+  }
+});

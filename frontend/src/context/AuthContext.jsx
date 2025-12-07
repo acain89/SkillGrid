@@ -1,63 +1,82 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { auth, db } from "../services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+
+// 🔥 Added FCM helpers
+import {
+  requestFcmToken,
+  saveFcmTokenToUser,
+} from "../services/firebase";  // <-- IMPORTANT
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);        // Firebase user
-  const [profile, setProfile] = useState(null);  // { username, email, ... }
+  const auth = getAuth();
+  const db = getFirestore();
+
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
 
-      setUser(fbUser);
+      if (firebaseUser) {
+        // ----------------------------------------------------------
+        // Load Firestore profile (does NOT block login)
+        // ----------------------------------------------------------
+        let data = null;
 
-      try {
-        const docRef = doc(db, "users", fbUser.uid);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          setProfile(snap.data());
-        } else {
-          // Fallback profile from auth
-          setProfile({
-            username: fbUser.displayName || null,
-            email: fbUser.email || null,
-          });
+        try {
+          const ref = doc(db, "users", firebaseUser.uid);
+          const snap = await getDoc(ref);
+          data = snap.exists() ? snap.data() : null;
+        } catch (err) {
+          console.warn(
+            "AuthContext: Firestore profile load failed (ignored):",
+            err.message
+          );
         }
-      } catch (err) {
-        console.error("Error loading user profile:", err);
-      } finally {
-        setLoading(false);
+
+        setProfile(data);
+
+        // ----------------------------------------------------------
+        // 🔥 NEW: Request & save device push token
+        // ----------------------------------------------------------
+        try {
+          const token = await requestFcmToken();
+
+          if (token) {
+            await saveFcmTokenToUser(firebaseUser.uid, token);
+            console.log(
+              "AuthContext: FCM token saved for user:",
+              firebaseUser.uid
+            );
+          } else {
+            console.log("AuthContext: No FCM token available.");
+          }
+        } catch (err) {
+          console.warn("AuthContext: FCM token save failed:", err.message);
+        }
+
+      } else {
+        setProfile(null);
       }
+
+      setLoading(false);
     });
 
     return () => unsub();
   }, []);
 
-  const logout = async () => {
-    await signOut(auth);
-    setUser(null);
-    setProfile(null);
-  };
-
-  const value = {
-    user,
-    profile,
-    loading,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const value = { user, profile, loading };
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

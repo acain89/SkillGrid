@@ -2,7 +2,8 @@
 import React from "react";
 import "./ProfilePanel.css";
 import { playSound } from "../core/sound";
-import { BADGE_ICON_MAP } from "../components/badges/BadgeIcons";   // ✅ NEW IMPORT
+import { BADGE_ICON_MAP } from "../components/badges/BadgeIcons";
+import XpBar from "../components/XpBar";   // ⭐ ADDED
 
 const CLICK_SOUND = "/sounds/ui-click.mp3";
 
@@ -19,8 +20,13 @@ export default function ProfilePanel({
   onCashout = () => {},
   onClose,
 }) {
+
   const username = profile?.username || "Player";
   const email = profile?.email || "player@example.com";
+
+  const xp = profile?.xp || 0;                             // ⭐ ADDED
+  const freePasses = profile?.freePasses ||               // ⭐ ADDED
+    { five: 0, ten: 0, twenty: 0 };
 
   return (
     <div
@@ -34,6 +40,7 @@ export default function ProfilePanel({
         className="pp-modal"
         onClick={(e) => e.stopPropagation()}
       >
+
         {/* HEADER */}
         <div className="pp-header">
           <div className="pp-avatar">
@@ -41,12 +48,20 @@ export default function ProfilePanel({
           </div>
 
           <div className="pp-header-info">
-            <div className="pp-username">
-              {username}
-            </div>
-
+            <div className="pp-username">{username}</div>
             <div className="pp-email">{email}</div>
             <div className="pp-membersince">Member Since: Jan 2025</div>
+
+            {/* ⭐ INSERT XP BAR HERE ⭐ */}
+            <div className="pp-xp-container">
+              <XpBar
+                userId={profile?.uid}
+                xp={xp}
+                freePasses={freePasses}
+              />
+            </div>
+            {/* ⭐ END XP BAR ⭐ */}
+
           </div>
         </div>
 
@@ -59,7 +74,6 @@ export default function ProfilePanel({
             <span className="pp-row-value">${vaultBalance.toFixed(2)}</span>
           </div>
 
-          {/* CASHOUT BUTTON */}
           <button
             className={`pp-cashout-btn ${vaultBalance >= 30 ? "active" : ""}`}
             disabled={vaultBalance < 30}
@@ -161,7 +175,7 @@ export default function ProfilePanel({
           <div className="pp-badges-grid selectable">
             {badges.length > 0 ? (
               badges.map((badgeId) => {
-                const Icon = BADGE_ICON_MAP[badgeId];      // ✅ USE NEW ICON MAP
+                const Icon = BADGE_ICON_MAP[badgeId];
 
                 return (
                   <div
