@@ -1,3 +1,7 @@
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+
 /* global self, importScripts, firebase */
 
 importScripts("https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js");
