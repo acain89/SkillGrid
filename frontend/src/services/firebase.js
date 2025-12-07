@@ -10,7 +10,7 @@ import {
 } from "firebase/messaging";
 
 // ------------------------------------------------------------
-// Correct Firebase Config (MATCHING YOUR SW + FIREBASE CONSOLE)
+// Correct Firebase Config
 // ------------------------------------------------------------
 const firebaseConfig = {
   apiKey: "AIzaSyBTZHVlHQe7WZN6qt6HkhEBwE0kN-F6VAE",
@@ -33,9 +33,6 @@ export const db = getFirestore(app);
 //     FIREBASE CLOUD MESSAGING (FRONTEND)
 // ------------------------------------------------------------
 
-/**
- * Lazily load messaging instance (guards unsupported browsers)
- */
 let messagingPromise = null;
 
 export async function getMessagingInstance() {
@@ -52,10 +49,6 @@ export async function getMessagingInstance() {
   return messagingPromise;
 }
 
-/**
- * Request an FCM token. MUST be called after Notification permission granted.
- * Uses your VAPID key from environment: VITE_FCM_VAPID_KEY
- */
 export async function requestFcmToken() {
   const messaging = await getMessagingInstance();
   if (!messaging) return null;
@@ -82,59 +75,9 @@ export async function requestFcmToken() {
   }
 }
 
-/**
- * Save device token to Firestore under /users/{uid}
- */
-export async function saveFcmTokenToUser(uid, token) {
-  if (!uid || !token) return;
-
-  try {
-    await setDoc(
-      doc(db, "users", uid),
-      { fcmToken: token },
-      { merge: true }
-    );
-    console.log("Saved FCM token to Firestore for:", uid);
-  } catch (err) {
-    console.error("Failed to save FCM token:", err.message);
-  }
-}
-
-/**
- * Listen for foreground notifications.
- * If a push has a route attached, clicking it will navigate.
- */
-export async function subscribeToForegroundMessages(callback) {
-  const messaging = await getMessagingInstance();
-  if (!messaging) return;
-
-  onMessage(messaging, (payload) => {
-    console.log("[FCM] Foreground message:", payload);
-
-    if (payload?.notification) {
-      const { title, body } = payload.notification;
-      const route = payload.data?.route;
-
-      const notification = new Notification(title || "SkillGrid Alert", {
-        body: body || "",
-        data: { route },
-      });
-
-      notification.onclick = () => {
-        if (route) window.location.href = route;
-      };
-    }
-
-    if (callback) callback(payload);
-  });
-}
-
-
 // ------------------------------------------------------------
-// Save FCM token into Firestore: users/{uid}/pushTokens/{token}
+// Save token under users/{uid}/pushTokens/{token}
 // ------------------------------------------------------------
-import { doc, setDoc } from "firebase/firestore";
-
 export async function saveFcmTokenToUser(uid, token) {
   try {
     const ref = doc(db, "users", uid, "pushTokens", token);
@@ -145,7 +88,37 @@ export async function saveFcmTokenToUser(uid, token) {
   }
 }
 
-// Expose for testing in DevTools
+// ------------------------------------------------------------
+// Foreground message listener
+// ------------------------------------------------------------
+export async function subscribeToForegroundMessages(callback) {
+  const messaging = await getMessagingInstance();
+  if (!messaging) return;
+
+  onMessage(messaging, (payload) => {
+    console.log("[FCM] Foreground message:", payload);
+
+    const { title, body } = payload.notification || {};
+    const route = payload.data?.route;
+
+    if (title || body) {
+      const n = new Notification(title || "SkillGrid Alert", {
+        body: body || "",
+        data: { route },
+      });
+
+      n.onclick = () => {
+        if (route) window.location.href = route;
+      };
+    }
+
+    callback?.(payload);
+  });
+}
+
+// ------------------------------------------------------------
+// Expose for browser console testing
+// ------------------------------------------------------------
 if (typeof window !== "undefined") {
   window.requestFcmToken = requestFcmToken;
   window.subscribeToForegroundMessages = subscribeToForegroundMessages;
