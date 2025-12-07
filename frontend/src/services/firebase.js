@@ -1,3 +1,5 @@
+
+console.log("🔥 FIREBASE JS LOADED");
 console.log("Vite ENV:", import.meta.env);
 console.log("VAPID KEY:", import.meta.env.VITE_FCM_VAPID_KEY);
 
