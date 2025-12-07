@@ -1,6 +1,6 @@
-// ------------------------------------------------------------
-// Register Firebase Messaging Service Worker (must be BEFORE React loads)
-// ------------------------------------------------------------
+// src/main.jsx
+
+// 1) Register the service worker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
     .register("/firebase-messaging-sw.js")
@@ -10,16 +10,14 @@ if ("serviceWorker" in navigator) {
     );
 }
 
-// ------------------------------------------------------------
+// 2) Init Firebase + Auth
 import "./services/firebase.js";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 
-// ------------------------------------------------------------
-// Render App (NO StrictMode — prevents Google popup issues)
-// ------------------------------------------------------------
+// 3) Mount app
 ReactDOM.createRoot(document.getElementById("root")).render(
   <AuthProvider>
     <App />
