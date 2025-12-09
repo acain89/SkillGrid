@@ -156,4 +156,56 @@ router.post("/withdraw", async (req, res) => {
   }
 });
 
+/* ============================================================
+   POST: Tournament Entry Payment (Vault → Stripe fallback)
+============================================================ */
+router.post("/pay", async (req, res) => {
+  try {
+    const { uid, amount } = req.body || {};
+    const amt = Number(amount);
+
+    if (!uid || !amt || amt <= 0) {
+      return res.status(400).json({
+        ok: false,
+        error: "missing-or-invalid-uid-or-amount",
+      });
+    }
+
+    // Current vault balance
+    const balance = await getVaultBalance(uid);
+
+    // FULL coverage from vault
+    if (balance >= amt) {
+      const newBalance = await deductFromVault(uid, amt, "entry_fee", {});
+      return res.json({
+        ok: true,
+        usedVault: amt,
+        stripeRequired: false,
+        newBalance,
+      });
+    }
+
+    // PARTIAL coverage → vault empties, Stripe remainder needed
+    const vaultUsed = balance;
+    const remainder = amt - balance;
+
+    await deductFromVault(uid, balance, "entry_fee_partial", {});
+
+    return res.json({
+      ok: true,
+      usedVault: vaultUsed,
+      stripeRequired: true,
+      stripeAmount: remainder,
+      newBalance: 0,
+    });
+  } catch (err) {
+    console.error("Vault pay error:", err);
+    res.status(500).json({
+      ok: false,
+      error: err.message || "vault-pay-failed",
+    });
+  }
+});
+
+
 export default router;

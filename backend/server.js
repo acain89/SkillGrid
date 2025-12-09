@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import vaultRoutes from "./routes/vaultRoutes.js";
 import stripeRoutes from "./routes/stripeRoutes.js";
+import payoutRoutes from "./routes/payoutRoutes.js";
 
 
 // Routes
@@ -22,6 +23,12 @@ app.use(cors());
 app.use(express.json());
 app.use("/api/vault", vaultRoutes);
 app.use("/stripe", stripeRoutes);
+app.use(express.json());
+app.use(cors());
+
+// Stripe payouts
+app.use("/api/payouts", payoutRoutes);
+
 
 // ----------------------------------------------
 // REST API ROUTES
