@@ -59,6 +59,13 @@
   color: #7f91ac;
 }
 
+/* XP BAR CONTAINER */
+.pp-xp-container {
+  margin-top: 10px;
+  width: 100%;
+  max-width: 360px;
+}
+
 /* SECTION */
 .pp-section {
   border-top: 1px solid rgba(255,255,255,0.08);
@@ -188,7 +195,7 @@
   background: #1e304b;
 }
 
-/* SCROLLBAR (Optional niceness) */
+/* SCROLLBAR */
 .pp-modal::-webkit-scrollbar {
   width: 10px;
 }
@@ -198,7 +205,7 @@
   border-radius: 10px;
 }
 
-/* CASH OUT BUTTON — CLEAN, SMALL, NEON */
+/* CASH OUT BUTTON */
 .pp-cashout-btn {
   width: 180px;
   padding: 8px 14px;
@@ -212,25 +219,51 @@
   transition: 0.2s ease;
   display: block;
   text-align: center;
-
-  /* IMPORTANT: normal pointer — no “not allowed” cursor */
   cursor: pointer;
 }
 
-/* ENABLED STATE */
+/* ENABLED */
 .pp-cashout-btn.active {
   color: #00ffc8;
   border-color: #00ffc8;
-  background: rgba(0, 255, 200, 0.12);
-  box-shadow: 0 0 10px rgba(0, 255, 200, 0.35);
+  background: rgba(0,255,200,0.12);
+  box-shadow: 0 0 10px rgba(0,255,200,0.35);
 }
 
-/* HOVER ONLY WHEN ACTIVE */
 .pp-cashout-btn.active:hover {
-  background: rgba(0, 255, 200, 0.2);
-  box-shadow: 0 0 14px rgba(0, 255, 200, 0.55);
+  background: rgba(0,255,200,0.2);
+  box-shadow: 0 0 14px rgba(0,255,200,0.55);
 }
 
+/* DISABLED (Stripe not connected or under $30) */
+.pp-cashout-btn:disabled {
+  opacity: 0.5;
+  cursor: pointer;
+  filter: grayscale(0.3);
+}
+
+/* STRIPE ONBOARDING BUTTON — NEW */
+.pp-onboard-btn {
+  width: 220px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 123, 255, 0.35);
+  background: rgba(0, 123, 255, 0.08);
+  color: #66aaff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 6px 0 10px 0;
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.pp-onboard-btn:hover {
+  background: rgba(0, 123, 255, 0.18);
+  border-color: #2288ff;
+  box-shadow: 0 0 12px rgba(0, 123, 255, 0.35);
+}
+
+/* ROOT (some unused but harmless) */
 .profile-root {
   padding: 16px;
   color: #e5e7eb;
@@ -263,4 +296,3 @@
   min-width: 260px;
   max-width: 380px;
 }
-

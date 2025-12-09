@@ -18,6 +18,7 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [badges, setBadges] = useState([]);
   const [equippedBadge, setEquippedBadge] = useState(null);
+  const [vaultBalance, setVaultBalance] = useState(0); // ⭐ REAL VAULT
 
   async function loadProfile() {
     const user = auth.currentUser;
@@ -30,17 +31,18 @@ export default function Profile() {
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
 
-    // ⛔ FIRST LOGIN — create default profile
+    /* ---------------------------------------------------------
+       FIRST LOGIN → create minimal profile (vault = 0)
+    --------------------------------------------------------- */
     if (!snap.exists()) {
       const newProfile = {
         username: user.email.split("@")[0],
         email: user.email,
         createdAt: Date.now(),
 
-        // Vault
-        vaultBalance: 0,
+        // Vault controlled by backend — client cannot modify
+        vault: 0,
 
-        // Stats (start zero)
         stats: {
           played: 0,
           wins: 0,
@@ -52,35 +54,39 @@ export default function Profile() {
           streak: 0,
         },
 
-        // Formats
         formats: {
           casual: { played: 0, wins: 0, avg: "0" },
           pro: { played: 0, wins: 0, avg: "0" },
           elite: { played: 0, wins: 0, avg: "0" },
         },
 
-        // Badges
         badges: [],
         equippedBadge: null,
 
-        // Misc
         lastLogin: Date.now(),
       };
 
       await setDoc(ref, newProfile);
       setProfile(newProfile);
+      setVaultBalance(0);
       setBadges([]);
       setEquippedBadge(null);
       setLoading(false);
       return;
     }
 
-    // ⬇ Existing profile
+    /* ---------------------------------------------------------
+       EXISTING PROFILE
+    --------------------------------------------------------- */
     const data = snap.data();
 
     setProfile(data);
     setBadges(data.badges || []);
     setEquippedBadge(data.equippedBadge || null);
+
+    // ⭐ REAL VAULT — pulled from server
+    setVaultBalance(typeof data.vault === "number" ? data.vault : 0);
+
     setLoading(false);
   }
 
@@ -96,7 +102,9 @@ export default function Profile() {
     return <div style={{ color: "white", padding: 40 }}>No profile found.</div>;
   }
 
-  // 🔧 Handlers
+  /* ---------------------------------------------------------
+     BADGE EQUIP HANDLER
+  --------------------------------------------------------- */
   async function equipBadge(badgeId) {
     const user = auth.currentUser;
     if (!user) return;
@@ -109,19 +117,23 @@ export default function Profile() {
     playSound(CLICK_SOUND, 0.5);
   }
 
+  /* ---------------------------------------------------------
+     CASH-OUT HANDLER (UI ONLY — backend already ready)
+  --------------------------------------------------------- */
   async function requestCashout() {
-    if (profile.vaultBalance < 30) {
+    if (vaultBalance < 30) {
       playSound(CLICK_SOUND, 0.5);
+      alert("You need at least $30 to cash out.");
       return;
     }
 
-    alert("Cash-out triggered — Stripe integration coming next.");
+    alert("Cash-out request submitted — Stripe integration coming next.");
   }
 
   return (
     <ProfilePanel
       profile={profile}
-      vaultBalance={profile.vaultBalance}
+      vaultBalance={vaultBalance}   // ⭐ REAL BALANCE
       joinedTournament={profile.activeTournament || null}
       badges={badges}
       equippedBadge={equippedBadge}

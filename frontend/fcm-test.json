@@ -1,0 +1,14 @@
+{
+  "message": {
+    "token": "PASTE_YOUR_DEVICE_TOKEN_HERE",
+    "notification": {
+      "title": "SkillGrid Test",
+      "body": "This is a live push notification!"
+    },
+    "webpush": {
+      "fcm_options": {
+        "link": "/home"
+      }
+    }
+  }
+}

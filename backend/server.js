@@ -2,6 +2,9 @@
 import http from "http";
 import express from "express";
 import cors from "cors";
+import vaultRoutes from "./routes/vaultRoutes.js";
+import stripeRoutes from "./routes/stripeRoutes.js";
+
 
 // Routes
 import tournamentRoutes, {
@@ -17,6 +20,8 @@ import { createTournamentWsServer } from "./tournamentWs.js";
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use("/api/vault", vaultRoutes);
+app.use("/stripe", stripeRoutes);
 
 // ----------------------------------------------
 // REST API ROUTES

@@ -1,23 +1,16 @@
 // backend/push/sendMatchReadyPush.js
 import { sendPushToUser } from "./sendPushToUser.js";
 
-export async function sendMatchReadyPush(tournament, match, gameType) {
-  const title = "Your Match Is Ready";
-  const body = `Enter ${gameType.toUpperCase()} now — your opponent is waiting.`;
-  const route = `/tournament/${tournament.id}/game/${gameType}`;
+export async function sendMatchReadyPush(tournament, match) {
+  if (!match?.playerIds) return;
 
-  const payload = {
-    notification: { title, body },
-    data: {
-      route,
-      tournamentId: tournament.id,
-      roundIndex: String(match.roundIndex),
-      matchIndex: String(match.matchIndex),
-      gameType,
-    },
-  };
+  const { playerIds } = match;
 
-  for (const uid of match.playerIds) {
-    await sendPushToUser(uid, payload);
+  for (const uid of playerIds) {
+    await sendPushToUser(uid, {
+      title: "Your tournament is starting!",
+      body: "Your first match is ready. Good luck!",
+      route: `/tournament/${tournament.id}`
+    });
   }
 }

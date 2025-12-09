@@ -1,11 +1,12 @@
 // ------------------------------------------------------------
-// Logging for debugging
+// Debug Logs
 // ------------------------------------------------------------
-console.log("Vite ENV:", import.meta.env);
-console.log("VAPID KEY:", import.meta.env.VITE_FCM_VAPID_KEY);
+console.log("🔥 FIREBASE.JS LOADED");
+console.log("🔥 VAPID KEY:", import.meta.env.VITE_FCM_VAPID_KEY);
+console.log("🔥 API BASE:", import.meta.env.VITE_API_BASE);
 
 // ------------------------------------------------------------
-// Firebase imports
+// Firebase Imports
 // ------------------------------------------------------------
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
@@ -38,7 +39,7 @@ export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
 
 // ------------------------------------------------------------
-// Messaging
+// Messaging Setup (Lazy Load Because Browsers Break Otherwise)
 // ------------------------------------------------------------
 let messagingPromise = null;
 
@@ -46,13 +47,19 @@ export async function getMessagingInstance() {
   if (!messagingPromise) {
     messagingPromise = (async () => {
       const supported = await isSupported();
-      if (!supported) return null;
+      if (!supported) {
+        console.warn("❌ Messaging not supported on this browser.");
+        return null;
+      }
       return getMessaging(app);
     })();
   }
   return messagingPromise;
 }
 
+// ------------------------------------------------------------
+// Request FCM Token
+// ------------------------------------------------------------
 export async function requestFcmToken() {
   const messaging = await getMessagingInstance();
   if (!messaging) return null;
@@ -60,39 +67,62 @@ export async function requestFcmToken() {
   try {
     const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY;
     if (!vapidKey) {
-      console.warn("Missing VAPID key.");
+      console.warn("❌ Missing VAPID key in .env");
       return null;
     }
+
     const token = await getToken(messaging, { vapidKey });
-    console.log("FCM Token:", token);
+    console.log("🔥 FCM Token Retrieved:", token);
     return token;
   } catch (err) {
-    console.error("Token error:", err);
+    console.error("❌ Token error:", err);
     return null;
   }
 }
 
+// ------------------------------------------------------------
+// Save Token — FIXED VERSION FOR YOUR RULES
+// Path: users/{uid}/pushTokens/{token}
+// ------------------------------------------------------------
 export async function saveFcmTokenToUser(uid, token) {
   try {
+    if (!uid || !token) {
+      console.warn("❌ Missing UID or token.");
+      return;
+    }
+
+    // Firestore rules allow exactly this path:
+    // match /users/{uid}/pushTokens/{token}
     const ref = doc(db, "users", uid, "pushTokens", token);
-    await setDoc(ref, { createdAt: Date.now() }, { merge: true });
-    console.log("Token saved:", uid);
+
+    await setDoc(ref, {
+      uid,
+      token,
+      createdAt: Date.now(),
+    });
+
+    console.log("✅ Token saved to Firestore:", ref.path);
   } catch (err) {
-    console.error("Save error:", err);
+    console.error("❌ Failed to save token:", err);
   }
 }
 
+// ------------------------------------------------------------
+// Foreground Notifications
+// ------------------------------------------------------------
 export async function subscribeToForegroundMessages(callback) {
   const messaging = await getMessagingInstance();
   if (!messaging) return;
 
   onMessage(messaging, (payload) => {
-    console.log("[FCM] Foreground:", payload);
+    console.log("📬 Foreground FCM:", payload);
     callback?.(payload);
   });
 }
 
-// DevTools helpers
+// ------------------------------------------------------------
+// DevTools Helper
+// ------------------------------------------------------------
 if (typeof window !== "undefined") {
   window.requestFcmToken = requestFcmToken;
   window.subscribeToForegroundMessages = subscribeToForegroundMessages;

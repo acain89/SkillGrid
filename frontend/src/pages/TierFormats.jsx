@@ -1,33 +1,43 @@
 // src/pages/TierFormats.jsx
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./tournamentArena.css";
 import { playSound } from "../core/sound";
+
 import { auth, db } from "../services/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 import ProfilePanel from "../components/ProfilePanel.jsx";
 import RulesPanel from "../components/RulesPanel.jsx";
 
-const CLICK_SOUND = "/sounds/ui-click.mp3";
+// --------------------------------------------------------
+// Host fees by tier
+// --------------------------------------------------------
+const HOST_FEE = {
+  rookie: 0.99,
+  pro: 1.99,
+  elite: 3.49,
+};
 
-/* -------------------------------------------------------
-   XP IS BASED ON TIER (BUY-IN AMOUNT), NOT FORMAT
--------------------------------------------------------- */
+// --------------------------------------------------------
+// Entry fee + XP by tier
+// (Entry fee does NOT include host fee)
+// --------------------------------------------------------
 const TIER_CONFIG = {
   rookie: { entryFee: 5, xpAward: 5 },
   pro: { entryFee: 10, xpAward: 10 },
   elite: { entryFee: 20, xpAward: 20 },
 };
 
+const CLICK_SOUND = "/sounds/ui-click.mp3";
+
 export default function TierFormats() {
   const navigate = useNavigate();
 
-  // RULES + PROFILE MODALS
   const [showRules, setShowRules] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  // PROFILE DATA
   const [profileData, setProfileData] = useState({
     username: "",
     email: "",
@@ -41,9 +51,9 @@ export default function TierFormats() {
     activeTournament: null,
   });
 
-  /* -------------------------------------------------------
-     LOAD PROFILE ON MOUNT
-  -------------------------------------------------------- */
+  // --------------------------------------------------------
+  // Load profile (including vaultBalance)
+  // --------------------------------------------------------
   useEffect(() => {
     async function loadProfile() {
       const user = auth.currentUser;
@@ -63,8 +73,8 @@ export default function TierFormats() {
           games: data.games || {},
           recent: data.recent || [],
           badges: data.badges || [],
-          activeTournament: data.activeTournament || null,
           createdAt: data.createdAt || "—",
+          activeTournament: data.activeTournament || null,
         });
       }
     }
@@ -72,11 +82,35 @@ export default function TierFormats() {
     loadProfile();
   }, []);
 
-  /* -------------------------------------------------------
-     JOIN BUTTON HANDLER
-     formatKey = flattened | competitive | wta
-     tierKey   = rookie | pro | elite
-  -------------------------------------------------------- */
+  // --------------------------------------------------------
+  // Use Vault API
+  // --------------------------------------------------------
+  async function apiUseVault(uid, amount, reason) {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/vault/use`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, amount, reason }),
+      });
+
+      const data = await res.json();
+      return data.ok ? data.newBalance : null;
+    } catch (err) {
+      console.error("Vault error:", err);
+      return null;
+    }
+  }
+
+  // --------------------------------------------------------
+  // Silent Stripe redirect
+  // --------------------------------------------------------
+  function redirectToStripeCheckout(formatKey, tierKey) {
+    navigate(`/checkout?tier=${tierKey}&format=${formatKey}`);
+  }
+
+  // --------------------------------------------------------
+  // JOIN LOGIC
+  // --------------------------------------------------------
   async function handleJoin(formatKey, tierKey) {
     playSound(CLICK_SOUND, 0.5);
 
@@ -92,39 +126,64 @@ export default function TierFormats() {
       return;
     }
 
+    const entryFee = tierCfg.entryFee;
+    const hostFee = HOST_FEE[tierKey];
+    const totalCost = entryFee + hostFee;
+
     try {
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
 
       if (!snap.exists()) {
-        console.warn("User doc missing; cannot join tournament.");
+        console.warn("Missing user profile");
         return;
       }
 
-      // Store tournament selection for XP logic
-      await updateDoc(ref, {
-        activeTournament: {
-          tier: tierKey,                 // rookie | pro | elite
-          entryFee: tierCfg.entryFee,    // 5 / 10 / 20
-          xpAward: tierCfg.xpAward,      // XP given once game actually starts
-          format: formatKey,             // flattened | competitive | wta
-          joinedAt: Date.now(),
-          entryXpGranted: false,         // Connect4Neon will check this
-        },
-      });
+      const vault = snap.data().vaultBalance || 0;
 
-      // Navigate to the bracket page for this format
-      navigate(`/tournament/${formatKey}`);
+      // --------------------------------------------------------
+      // CASE 1 — Vault CAN cover total cost
+      // --------------------------------------------------------
+      if (vault >= totalCost) {
+        const newBalance = await apiUseVault(
+          user.uid,
+          totalCost,
+          "tournament_entry"
+        );
+
+        if (newBalance !== null) {
+          await updateDoc(ref, {
+            vaultBalance: newBalance,
+            activeTournament: {
+              tier: tierKey,
+              entryFee,
+              xpAward: tierCfg.xpAward,
+              format: formatKey,
+              joinedAt: Date.now(),
+              entryXpGranted: false,
+            },
+          });
+
+          navigate(`/tournament/${formatKey}`);
+          return;
+        }
+      }
+
+      // --------------------------------------------------------
+      // CASE 2 — Not enough vault => send to Stripe
+      // --------------------------------------------------------
+      redirectToStripeCheckout(formatKey, tierKey);
     } catch (err) {
       console.error("Join tournament failed:", err);
     }
   }
 
-  /* -------------------------------------------------------
-     RENDER UI
-  -------------------------------------------------------- */
+  // --------------------------------------------------------
+  // UI Rendering
+  // --------------------------------------------------------
   return (
     <div className="arena-root">
+
       {/* BACK BUTTON */}
       <button
         className="arena-back-btn"
@@ -141,10 +200,8 @@ export default function TierFormats() {
         Logout
       </button>
 
-      {/* BACKGROUND */}
       <div className="arena-bg-glow"></div>
 
-      {/* HEADER */}
       <header className="arena-header">
         <h1 className="arena-title">TOURNAMENT ARENA</h1>
         <p className="arena-subtitle">
@@ -153,18 +210,17 @@ export default function TierFormats() {
       </header>
 
       <main className="arena-main">
-        {/* FORMAT + TIER GRID */}
+
+        {/* GRID */}
         <section className="arena-card-grid">
-          {/* CASUAL → Rookie Tier */}
+          {/* CASUAL */}
           <article className="arena-card arena-card--cyan">
             <div className="arena-card-inner">
               <div className="arena-card-solid-bar"></div>
 
               <div className="arena-card-header">
                 <h2 className="arena-card-title">CASUAL</h2>
-                <p className="arena-card-subtitle">
-                  Friendly game with more prizes.
-                </p>
+                <p className="arena-card-subtitle">Friendly game with more prizes.</p>
               </div>
 
               <div className="arena-card-main">
@@ -175,7 +231,6 @@ export default function TierFormats() {
                 </div>
 
                 <div className="arena-card-payout-block">
-                  <div className="arena-card-payout-title">Payouts</div>
                   <ul className="arena-card-payouts">
                     <li>1st $80</li>
                     <li>2nd $60</li>
@@ -196,7 +251,7 @@ export default function TierFormats() {
             </div>
           </article>
 
-          {/* PRO → Pro Tier */}
+          {/* PRO */}
           <article className="arena-card arena-card--orange">
             <div className="arena-card-inner">
               <div className="arena-card-solid-bar"></div>
@@ -212,11 +267,9 @@ export default function TierFormats() {
                 <div className="arena-card-pot-row">
                   <span className="arena-card-pot-label">Pot</span>
                   <span className="arena-card-pot-value">$320</span>
-                  <span className="arena-card-players-cap">16 players</span>
                 </div>
 
                 <div className="arena-card-payout-block">
-                  <div className="arena-card-payout-title">Payouts</div>
                   <ul className="arena-card-payouts">
                     <li>1st $140</li>
                     <li>2nd $100</li>
@@ -236,27 +289,23 @@ export default function TierFormats() {
             </div>
           </article>
 
-          {/* ELITE → Elite Tier */}
+          {/* ELITE */}
           <article className="arena-card arena-card--magenta">
             <div className="arena-card-inner">
               <div className="arena-card-solid-bar"></div>
 
               <div className="arena-card-header">
                 <h2 className="arena-card-title">ELITE</h2>
-                <p className="arena-card-subtitle">
-                  16 players. Only one prize.
-                </p>
+                <p className="arena-card-subtitle">One prize. Winner takes all.</p>
               </div>
 
               <div className="arena-card-main">
                 <div className="arena-card-pot-row">
                   <span className="arena-card-pot-label">Pot</span>
                   <span className="arena-card-pot-value">$320</span>
-                  <span className="arena-card-players-cap">16 players</span>
                 </div>
 
                 <div className="arena-card-payout-block">
-                  <div className="arena-card-payout-title">Payouts</div>
                   <ul className="arena-card-payouts">
                     <li>1st $320</li>
                   </ul>
@@ -275,7 +324,7 @@ export default function TierFormats() {
           </article>
         </section>
 
-        {/* TRUST CHECKLIST */}
+        {/* TRUST LIST */}
         <div className="trust-checklist">
           <p>✓ Zero hidden fees</p>
           <p>✓ 100% of entry fees go to the prize pool</p>
@@ -285,26 +334,17 @@ export default function TierFormats() {
           <p>✓ Skill-based games only</p>
         </div>
 
-        {/* PROFILE & RULES BUTTONS */}
-        <button
-          className="arena-profile-btn"
-          onClick={() => setShowProfile(true)}
-        >
+        {/* PROFILE + RULES */}
+        <button className="arena-profile-btn" onClick={() => setShowProfile(true)}>
           Profile
         </button>
 
-        <button
-          className="arena-rules-btn"
-          onClick={() => setShowRules(true)}
-        >
+        <button className="arena-rules-btn" onClick={() => setShowRules(true)}>
           Rules
         </button>
       </main>
 
-      {/* RULES PANEL */}
       {showRules && <RulesPanel onClose={() => setShowRules(false)} />}
-
-      {/* PROFILE PANEL */}
       {showProfile && (
         <ProfilePanel
           profile={profileData}

@@ -15,6 +15,7 @@ import {
   listTournaments,
 } from "../state/tournamentStore.js";
 
+import { depositToVault } from "../payouts/vaultEngine.js";
 
 const router = Router();
 
@@ -102,15 +103,6 @@ router.post("/create", async (req, res) => {
 
   if (filled) {
     tournament = buildInitialBracket(tournament);
-
-    // ⭐ NEW — Notify players that tournament starts in 30 seconds
-    await sendPushToTournamentPlayers(tournament, {
-      title: "Your bracket is full!",
-      body: "Tournament starts in 30 seconds.",
-    }, {
-      type: "TOURNAMENT_STARTING",
-      tid: tournament.id,
-    });
   }
 
   wsBroadcast({
@@ -121,7 +113,6 @@ router.post("/create", async (req, res) => {
 
   res.json({ ok: true, tournament });
 });
-
 
 router.post("/:id/register", async (req, res) => {
   const { id, name } = req.body || {};
@@ -136,28 +127,19 @@ router.post("/:id/register", async (req, res) => {
 
   if (!existing.players) existing.players = [];
   if (existing.players.length >= 16) {
-    return res.status(400).json({ ok: false, error: "tournament-already-full" });
+    return res
+      .status(400)
+      .json({ ok: false, error: "tournament-already-full" });
   }
 
   existing.players.push({ id, name });
 
   let updated = existing;
-
   const filled = existing.players.length === 16;
 
   if (filled) {
     updated = buildInitialBracket(existing);
-
     updateTournament(req.params.id, updated);
-
-    // ⭐ NEW — Tournament full → notify all players
-    await sendPushToTournamentPlayers(updated, {
-      title: "Bracket locked!",
-      body: "Tournament starts in 30 seconds!",
-    }, {
-      type: "TOURNAMENT_STARTING",
-      tid: updated.id,
-    });
   } else {
     updateTournament(req.params.id, existing);
   }
@@ -172,7 +154,7 @@ router.post("/:id/register", async (req, res) => {
 });
 
 /* ============================================================================
-   MATCH RESULT REPORTING
+   MATCH RESULT REPORTING + VAULT CREDIT
 ============================================================================ */
 
 router.post("/:id/report-result", async (req, res) => {
@@ -188,10 +170,17 @@ router.post("/:id/report-result", async (req, res) => {
     typeof matchIndex !== "number" ||
     (winnerSide !== 0 && winnerSide !== 1)
   ) {
-    return res.status(400).json({ ok: false, error: "invalid-round-match-or-winnerSide" });
+    return res
+      .status(400)
+      .json({ ok: false, error: "invalid-round-match-or-winnerSide" });
   }
 
-  const result = recordMatchResult(tournament, roundIndex, matchIndex, winnerSide);
+  const result = await recordMatchResult(
+    tournament,
+    roundIndex,
+    matchIndex,
+    winnerSide
+  );
 
   const updatedTournament = updateTournament(req.params.id, result.tournament);
 
@@ -207,41 +196,52 @@ router.post("/:id/report-result", async (req, res) => {
   if (isFinalRound && updatedTournament.champion) {
     status = "champion";
     placementLabel = "1st";
-    prizeAmount = computePrize(tier, format, placementLabel);
+    prizeAmount = computePrize(tier, format, "1st");
   }
 
   if (result.placementLabel) {
     placementLabel = result.placementLabel;
-    prizeAmount = computePrize(tier, format, placementLabel);
-    status = placementLabel === "2nd" && isFinalRound ? "runner-up" : "eliminated";
+    prizeAmount = computePrize(tier, format, result.placementLabel);
+    status =
+      placementLabel === "2nd" && isFinalRound ? "runner-up" : "eliminated";
   }
 
-  // ⭐ NEW — Notify players who advanced (not eliminated)
-  if (status === "advance") {
-    await sendPushToAlivePlayers(updatedTournament, {
-      title: "You advanced!",
-      body: "Next round starts in 10 seconds!",
-    }, {
-      type: "ADVANCED",
-      tid: updatedTournament.id,
-      roundIndex: roundIndex + 1,
-    });
-  }
+  // 🔺 VAULT PAYOUTS (server-side only, independent of response)
+  try {
+    const payouts = [];
 
-  // ⭐ NEW — When all matches in a round finish → announce next round
-  const allDone = updatedTournament.rounds[roundIndex].every(
-    (m) => m.winnerId
-  );
+    // Champion prize (1st place)
+    if (isFinalRound && updatedTournament.champion) {
+      const amt1 = computePrize(tier, format, "1st");
+      if (amt1 > 0) {
+        payouts.push({
+          uid: updatedTournament.champion,
+          amount: amt1,
+          placement: "1st",
+        });
+      }
+    }
 
-  if (allDone && !isFinalRound) {
-    await sendPushToAlivePlayers(updatedTournament, {
-      title: `Round ${roundIndex + 2} is next`,
-      body: "Next round starts in 10 seconds!",
-    }, {
-      type: "ROUND_START",
-      tid: updatedTournament.id,
-      roundIndex: roundIndex + 1,
-    });
+    // Loser prize (2nd, 3rd–4th, 5th–8th, etc.)
+    if (result.placementLabel) {
+      const loserPrize = computePrize(tier, format, result.placementLabel);
+      if (loserPrize > 0 && result.match?.loserId) {
+        payouts.push({
+          uid: result.match.loserId,
+          amount: loserPrize,
+          placement: result.placementLabel,
+        });
+      }
+    }
+
+    for (const p of payouts) {
+      await depositToVault(p.uid, p.amount, "prize", {
+        tournamentId: updatedTournament.id,
+        placement: p.placement,
+      });
+    }
+  } catch (err) {
+    console.error("Vault payout error:", err);
   }
 
   wsBroadcast({

@@ -1,23 +1,33 @@
 // src/main.jsx
 
-// 1) Register the service worker
+// --------------------------------------------------
+// 1) Register Service Worker BEFORE Firebase loads
+// --------------------------------------------------
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("/firebase-messaging-sw.js")
-    .then(() => console.log("FCM Service Worker Registered"))
-    .catch((err) =>
-      console.error("FCM SW registration failed:", err)
-    );
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then((reg) => {
+        console.log("✓ FCM Service Worker Registered:", reg.scope);
+      })
+      .catch((err) => {
+        console.error("✗ FCM SW registration failed:", err);
+      });
+  });
 }
 
-// 2) Init Firebase + Auth
+// --------------------------------------------------
+// 2) Load Firebase + App
+// --------------------------------------------------
 import "./services/firebase.js";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 
-// 3) Mount app
+// --------------------------------------------------
+// 3) Mount Application
+// --------------------------------------------------
 ReactDOM.createRoot(document.getElementById("root")).render(
   <AuthProvider>
     <App />

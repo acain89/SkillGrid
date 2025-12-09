@@ -1,10 +1,11 @@
 // backend/state/tournamentStore.js
 //
-// Simple in-memory 16-player single-elimination tournament store.
-// This is meant for live testing and can later be replaced with
-// a persistent store (Firestore, SQL, etc).
+// 16-player in-memory tournament engine.
+// Push notifications + Vault payout integration.
+//
 
 import { sendMatchReadyPush } from "../push/sendMatchReadyPush.js";
+import { addToVault } from "./vaultStore.js";
 
 const tournaments = new Map();
 
@@ -12,18 +13,12 @@ const tournaments = new Map();
    Helpers
 ============================================================ */
 
-/**
- * Check whether the current round is fully complete.
- */
 function isRoundComplete(t) {
   const r = t.rounds[t.currentRound];
   if (!r) return false;
   return r.matches.every((m) => m.status === "finished");
 }
 
-/**
- * Build the next round pairings from winners of the current round.
- */
 function buildNextRoundPairings(t) {
   const round = t.rounds[t.currentRound];
   const winners = round.matches.map((m) => m.winnerId);
@@ -51,21 +46,21 @@ function buildNextRoundPairings(t) {
 }
 
 /* ============================================================
-   Core Tournament Store API
+   Core Store API
 ============================================================ */
 
 export function createTournamentEntry(t) {
-  if (!t || !t.id) {
-    throw new Error("createTournamentEntry requires an id");
-  }
+  if (!t || !t.id) throw new Error("createTournamentEntry requires an id");
+
   const base = {
-    status: "waiting", // "waiting" | "ready" | "running" | "finished"
+    status: "waiting", // "waiting" | "running" | "finished"
     currentRound: 0,
     rounds: [],
     champion: null,
     createdAt: Date.now(),
     ...t,
   };
+
   tournaments.set(t.id, base);
   return base;
 }
@@ -88,16 +83,16 @@ export function updateTournament(id, updater) {
 export function getOrCreateTournament(id, factory) {
   const existing = tournaments.get(id);
   if (existing) return existing;
-  if (typeof factory !== "function") {
+  if (typeof factory !== "function")
     throw new Error("getOrCreateTournament missing factory");
-  }
+
   const created = factory();
   tournaments.set(id, created);
   return created;
 }
 
 /* ============================================================
-   Bracket Building
+   Bracket Initialization
 ============================================================ */
 
 export function buildInitialBracket(tournament) {
@@ -106,8 +101,8 @@ export function buildInitialBracket(tournament) {
   }
 
   const players = tournament.players;
-
   const round0Matches = [];
+
   for (let i = 0; i < 16; i += 2) {
     round0Matches.push({
       id: `r0m${i / 2}`,
@@ -120,24 +115,75 @@ export function buildInitialBracket(tournament) {
     });
   }
 
+  // 🔥 Push notifications for Round 1
+  for (const m of round0Matches) {
+    sendMatchReadyPush(tournament, m, "connect4");
+  }
+
   return {
     ...tournament,
     status: "running",
     currentRound: 0,
-    rounds: [
-      {
-        roundIndex: 0,
-        matches: round0Matches,
-      },
-    ],
+    rounds: [{ roundIndex: 0, matches: round0Matches }],
   };
 }
 
 /* ============================================================
-   Match Result + Progression Logic
+   Prize Table (matches UI + business rules)
 ============================================================ */
 
-export async function recordMatchResult(tournament, roundIndex, matchIndex, winnerSide) {
+function computePrize(tier, format, placementLabel) {
+  const t = tier || "casual";
+  const f = format || "casual";
+
+  // WTA format (ELITE)
+  if (f === "wta") {
+    if (placementLabel === "1st") return 320;
+    return 0;
+  }
+
+  // CASUAL tier (flattened)
+  if (t === "casual") {
+    switch (placementLabel) {
+      case "1st": return 80;
+      case "2nd": return 60;
+      case "3rd–4th": return 40;
+      case "5th–8th": return 25;
+      default: return 0;
+    }
+  }
+
+  // PRO tier (competitive)
+  if (t === "pro") {
+    switch (placementLabel) {
+      case "1st": return 140;
+      case "2nd": return 100;
+      case "3rd–4th": return 40;
+      default: return 0;
+    }
+  }
+
+  // ELITE tier (WTA) – 1st handled above via format
+  if (t === "elite") {
+    switch (placementLabel) {
+      case "1st": return 320;
+      default: return 0;
+    }
+  }
+
+  return 0;
+}
+
+/* ============================================================
+   Match Result + Round Progression + Vault Payouts
+============================================================ */
+
+export async function recordMatchResult(
+  tournament,
+  roundIndex,
+  matchIndex,
+  winnerSide
+) {
   if (!tournament.rounds || !tournament.rounds[roundIndex]) {
     throw new Error("Invalid round index");
   }
@@ -146,7 +192,7 @@ export async function recordMatchResult(tournament, roundIndex, matchIndex, winn
   const match = round.matches[matchIndex];
   if (!match) throw new Error("Invalid match index");
 
-  // Prevent double-processing
+  // Prevent double handling
   if (match.status === "finished") {
     return {
       tournament,
@@ -157,53 +203,86 @@ export async function recordMatchResult(tournament, roundIndex, matchIndex, winn
     };
   }
 
-  const p1Id = match.playerIds[0];
-  const p2Id = match.playerIds[1];
-  const winnerId = winnerSide === 0 ? p1Id : p2Id;
-  const loserId = winnerSide === 0 ? p2Id : p1Id;
+  const p1 = match.playerIds[0];
+  const p2 = match.playerIds[1];
+  const winnerId = winnerSide === 0 ? p1 : p2;
+  const loserId = winnerSide === 0 ? p2 : p1;
 
   match.status = "finished";
   match.winnerId = winnerId;
   match.loserId = loserId;
 
-  const isFinalRound = roundIndex === 3;
-  const isSemiFinal = roundIndex === 2;
-  const isQuarterFinal = roundIndex === 1;
-  const isRoundOf16 = roundIndex === 0;
+  const isFinal = roundIndex === 3;
+  const isSemi = roundIndex === 2;
+  const isQF = roundIndex === 1;
+  const isR16 = roundIndex === 0;
 
   let placementLabel = null;
 
-  if (isFinalRound) {
+  // NOTE: placementLabel here is always for the *loser* of this match
+  if (isFinal) {
     tournament.champion = winnerId;
     tournament.status = "finished";
-    placementLabel = "2nd";
-  } else if (isSemiFinal) {
+    placementLabel = "2nd"; // loser gets 2nd
+  } else if (isSemi) {
     placementLabel = "3rd–4th";
-  } else if (isQuarterFinal) {
+  } else if (isQF) {
     placementLabel = "5th–8th";
-  } else if (isRoundOf16) {
+  } else if (isR16) {
     placementLabel = "9th–16th";
   }
 
-  // Round-complete check using reliable helper
-  if (!isFinalRound && isRoundComplete(tournament)) {
-    // Build next round
+  const tier = tournament.tier || "casual";
+  const format = tournament.format || "casual";
+
+  /* --------------------------------------------------------
+     🔥 Vault payouts – LOSER (placement prize)
+  -------------------------------------------------------- */
+  if (placementLabel) {
+    const loserPrize = computePrize(tier, format, placementLabel);
+    if (loserPrize > 0) {
+      await addToVault(loserId, loserPrize, {
+        kind: "tournament_prize",
+        placement: placementLabel,
+        tournamentId: tournament.id,
+      });
+    }
+  }
+
+  /* --------------------------------------------------------
+     🔥 Vault payout – WINNER (1st place)
+     Only happens ONCE in the final match.
+  -------------------------------------------------------- */
+  if (isFinal) {
+    const winnerPrize = computePrize(tier, format, "1st");
+    if (winnerPrize > 0) {
+      await addToVault(winnerId, winnerPrize, {
+        kind: "tournament_prize",
+        placement: "1st",
+        tournamentId: tournament.id,
+      });
+    }
+  }
+
+  /* --------------------------------------------------------
+     Next Round + push notifications
+  -------------------------------------------------------- */
+  if (!isFinal && isRoundComplete(tournament)) {
     buildNextRoundPairings(tournament);
 
-    // Identify new round + first match
     const nextRound = tournament.rounds[tournament.currentRound];
-    const nextMatch = nextRound.matches[0];
 
-    // Send a "match-ready" push notification to the 2 players
-    await sendMatchReadyPush(tournament, nextMatch, "connect4");
+    for (const m of nextRound.matches) {
+      await sendMatchReadyPush(tournament, m, "connect4");
+    }
   }
 
   return {
     tournament,
     match,
-    placementLabel,
-    prizeAmount: 0,
-    status: isFinalRound ? "finalized" : "advance-or-eliminate",
+    placementLabel,        // loser’s placement for UI if needed
+    prizeAmount: 0,        // kept for compatibility; real money is in vault
+    status: isFinal ? "finalized" : "advance-or-eliminate",
   };
 }
 

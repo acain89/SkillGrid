@@ -1,33 +1,125 @@
 // src/components/ProfilePanel.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "./ProfilePanel.css";
 import { playSound } from "../core/sound";
 import { BADGE_ICON_MAP } from "../components/badges/BadgeIcons";
-import XpBar from "../components/XpBar";   // ⭐ ADDED
+import XpBar from "../components/XpBar";
+import { auth, db } from "../services/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const CLICK_SOUND = "/sounds/ui-click.mp3";
 
-/* ============================================================
-   MAIN COMPONENT
-   ============================================================ */
+/* ======================================================================
+   PROFILE PANEL
+====================================================================== */
 export default function ProfilePanel({
   profile,
-  vaultBalance,
-  joinedTournament,
+  vaultBalance = 0,
   badges = [],
   equippedBadge,
   onEquipBadge = () => {},
-  onCashout = () => {},
   onClose,
 }) {
-
   const username = profile?.username || "Player";
   const email = profile?.email || "player@example.com";
 
-  const xp = profile?.xp || 0;                             // ⭐ ADDED
-  const freePasses = profile?.freePasses ||               // ⭐ ADDED
-    { five: 0, ten: 0, twenty: 0 };
+  const xp = profile?.xp || 0;
+  const freePasses = profile?.freePasses || { five: 0, ten: 0, twenty: 0 };
 
+  const [stripeReady, setStripeReady] = useState(false);
+  const [checkingStripe, setCheckingStripe] = useState(true);
+
+  /* ------------------------------------------------------------
+     CHECK STRIPE STATUS
+  ------------------------------------------------------------ */
+  useEffect(() => {
+    async function checkStripe() {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE}/stripe/status/${user.uid}`
+        );
+
+        const data = await res.json();
+        if (data.ok && data.payoutsEnabled) {
+          setStripeReady(true);
+        } else {
+          setStripeReady(false);
+        }
+      } catch (err) {
+        console.warn("Stripe status check failed:", err);
+      } finally {
+        setCheckingStripe(false);
+      }
+    }
+
+    checkStripe();
+  }, []);
+
+  /* ------------------------------------------------------------
+     TRIGGER STRIPE ONBOARDING
+  ------------------------------------------------------------ */
+  async function startStripeOnboarding() {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE}/stripe/onboard/${user.uid}`
+      );
+      const data = await res.json();
+
+      if (data.ok && data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.warn("Stripe onboarding failed:", err);
+    }
+  }
+
+  /* ------------------------------------------------------------
+     WITHDRAW (VAULT → STRIPE PAYOUT)
+  ------------------------------------------------------------ */
+  async function handleWithdraw() {
+    playSound(CLICK_SOUND, 0.5);
+
+    if (!stripeReady) {
+      alert("Stripe onboarding required before withdrawing.");
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/vault/withdraw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          amount: vaultBalance, // withdraw full available
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        alert("Withdraw failed: " + data.error);
+        return;
+      }
+
+      alert("Withdrawal request submitted!");
+    } catch (err) {
+      console.error("Withdraw error:", err);
+      alert("Withdrawal failed.");
+    }
+  }
+
+  /* ======================================================================
+     UI
+  ====================================================================== */
   return (
     <div
       className="pp-backdrop"
@@ -36,36 +128,24 @@ export default function ProfilePanel({
         onClose();
       }}
     >
-      <div
-        className="pp-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
-
+      <div className="pp-modal" onClick={(e) => e.stopPropagation()}>
         {/* HEADER */}
         <div className="pp-header">
-          <div className="pp-avatar">
-            {username.charAt(0).toUpperCase()}
-          </div>
+          <div className="pp-avatar">{username.charAt(0).toUpperCase()}</div>
 
           <div className="pp-header-info">
             <div className="pp-username">{username}</div>
             <div className="pp-email">{email}</div>
             <div className="pp-membersince">Member Since: Jan 2025</div>
 
-            {/* ⭐ INSERT XP BAR HERE ⭐ */}
+            {/* XP BAR */}
             <div className="pp-xp-container">
-              <XpBar
-                userId={profile?.uid}
-                xp={xp}
-                freePasses={freePasses}
-              />
+              <XpBar userId={profile?.uid} xp={xp} freePasses={freePasses} />
             </div>
-            {/* ⭐ END XP BAR ⭐ */}
-
           </div>
         </div>
 
-        {/* ACCOUNT */}
+        {/* ACCOUNT SECTION */}
         <div className="pp-section">
           <h3 className="pp-section-title">ACCOUNT</h3>
 
@@ -74,23 +154,32 @@ export default function ProfilePanel({
             <span className="pp-row-value">${vaultBalance.toFixed(2)}</span>
           </div>
 
+          {/* WITHDRAW BUTTON */}
           <button
-            className={`pp-cashout-btn ${vaultBalance >= 30 ? "active" : ""}`}
-            disabled={vaultBalance < 30}
-            onClick={() => {
-              if (vaultBalance >= 30) {
-                playSound(CLICK_SOUND, 0.5);
-                onCashout();
-              }
-            }}
+            className={`pp-cashout-btn ${
+              vaultBalance >= 30 && stripeReady ? "active" : ""
+            }`}
+            disabled={vaultBalance < 30 || !stripeReady}
+            onClick={handleWithdraw}
           >
-            Cash Out (Min $30)
+            {checkingStripe
+              ? "Checking Stripe…"
+              : !stripeReady
+              ? "Complete Stripe Setup"
+              : "Withdraw Funds"}
           </button>
+
+          {/* STRIPE ONBOARDING BUTTON */}
+          {!stripeReady && !checkingStripe && (
+            <button className="pp-onboard-btn" onClick={startStripeOnboarding}>
+              Enable Payouts (Stripe)
+            </button>
+          )}
 
           <div className="pp-row">
             <span className="pp-row-label">Active Tournament</span>
             <span className="pp-row-value">
-              {joinedTournament?.label || "None"}
+              {profile?.activeTournament?.format || "None"}
             </span>
           </div>
         </div>
@@ -100,70 +189,97 @@ export default function ProfilePanel({
           <h3 className="pp-section-title">TOURNAMENT OVERVIEW</h3>
 
           <div className="pp-row">
-            <span className="pp-row-label">Tournaments Played</span>
-            <span className="pp-row-value">{profile?.stats?.played ?? 0}</span>
+            <span>Tournaments Played</span>
+            <span>{profile?.stats?.played ?? 0}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Tournaments Won</span>
-            <span className="pp-row-value">{profile?.stats?.wins ?? 0}</span>
+            <span>Tournaments Won</span>
+            <span>{profile?.stats?.wins ?? 0}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Top-4 Finishes</span>
-            <span className="pp-row-value">{profile?.stats?.top4 ?? 0}</span>
+            <span>Top-4 Finishes</span>
+            <span>{profile?.stats?.top4 ?? 0}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Win Rate</span>
-            <span className="pp-row-value">{profile?.stats?.winRate ?? "0%"}</span>
+            <span>Win Rate</span>
+            <span>{profile?.stats?.winRate ?? "0%"}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Average Placement</span>
-            <span className="pp-row-value">{profile?.stats?.avgPlace ?? "-"}</span>
+            <span>Average Placement</span>
+            <span>{profile?.stats?.avgPlace ?? "-"}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Total Winnings</span>
-            <span className="pp-row-value">${profile?.stats?.winnings ?? 0}</span>
+            <span>Total Winnings</span>
+            <span>${profile?.stats?.winnings ?? 0}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Biggest Win</span>
-            <span className="pp-row-value">${profile?.stats?.biggest ?? 0}</span>
+            <span>Biggest Win</span>
+            <span>${profile?.stats?.biggest ?? 0}</span>
           </div>
 
           <div className="pp-row">
-            <span className="pp-row-label">Consecutive Wins</span>
-            <span className="pp-row-value">{profile?.stats?.streak ?? 0}</span>
+            <span>Consecutive Wins</span>
+            <span>{profile?.stats?.streak ?? 0}</span>
           </div>
         </div>
 
-        {/* FORMATS */}
+        {/* FORMATS SECTION */}
         <div className="pp-section">
           <h3 className="pp-section-title">FORMATS</h3>
 
           <div className="pp-grid-3">
             <div className="pp-card pp-cyan">
               <div className="pp-card-title">CASUAL</div>
-              <div className="pp-row"><span>Played</span><span>{profile?.formats?.casual?.played ?? 0}</span></div>
-              <div className="pp-row"><span>Wins</span><span>{profile?.formats?.casual?.wins ?? 0}</span></div>
-              <div className="pp-row"><span>Avg Placement</span><span>{profile?.formats?.casual?.avg ?? "-"}</span></div>
+              <div className="pp-row">
+                <span>Played</span>
+                <span>{profile?.formats?.casual?.played ?? 0}</span>
+              </div>
+              <div className="pp-row">
+                <span>Wins</span>
+                <span>{profile?.formats?.casual?.wins ?? 0}</span>
+              </div>
+              <div className="pp-row">
+                <span>Avg Placement</span>
+                <span>{profile?.formats?.casual?.avg ?? "-"}</span>
+              </div>
             </div>
 
             <div className="pp-card pp-orange">
               <div className="pp-card-title">PRO</div>
-              <div className="pp-row"><span>Played</span><span>{profile?.formats?.pro?.played ?? 0}</span></div>
-              <div className="pp-row"><span>Wins</span><span>{profile?.formats?.pro?.wins ?? 0}</span></div>
-              <div className="pp-row"><span>Avg Placement</span><span>{profile?.formats?.pro?.avg ?? "-"}</span></div>
+              <div className="pp-row">
+                <span>Played</span>
+                <span>{profile?.formats?.pro?.played ?? 0}</span>
+              </div>
+              <div className="pp-row">
+                <span>Wins</span>
+                <span>{profile?.formats?.pro?.wins ?? 0}</span>
+              </div>
+              <div className="pp-row">
+                <span>Avg Placement</span>
+                <span>{profile?.formats?.pro?.avg ?? "-"}</span>
+              </div>
             </div>
 
             <div className="pp-card pp-magenta">
               <div className="pp-card-title">ELITE</div>
-              <div className="pp-row"><span>Played</span><span>{profile?.formats?.elite?.played ?? 0}</span></div>
-              <div className="pp-row"><span>Wins</span><span>{profile?.formats?.elite?.wins ?? 0}</span></div>
-              <div className="pp-row"><span>Avg Placement</span><span>{profile?.formats?.elite?.avg ?? "-"}</span></div>
+              <div className="pp-row">
+                <span>Played</span>
+                <span>{profile?.formats?.elite?.played ?? 0}</span>
+              </div>
+              <div className="pp-row">
+                <span>Wins</span>
+                <span>{profile?.formats?.elite?.wins ?? 0}</span>
+              </div>
+              <div className="pp-row">
+                <span>Avg Placement</span>
+                <span>{profile?.formats?.elite?.avg ?? "-"}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -176,7 +292,6 @@ export default function ProfilePanel({
             {badges.length > 0 ? (
               badges.map((badgeId) => {
                 const Icon = BADGE_ICON_MAP[badgeId];
-
                 return (
                   <div
                     key={badgeId}
@@ -202,11 +317,22 @@ export default function ProfilePanel({
         {/* META */}
         <div className="pp-section">
           <h3 className="pp-section-title">ACCOUNT META</h3>
-
-          <div className="pp-row"><span>Account ID</span><span>{profile?.accountId || "—"}</span></div>
-          <div className="pp-row"><span>Last Login</span><span>{profile?.lastLogin || "Today"}</span></div>
-          <div className="pp-row"><span>Device</span><span>Desktop</span></div>
-          <div className="pp-row"><span>Verification</span><span>Verified ✓</span></div>
+          <div className="pp-row">
+            <span>Account ID</span>
+            <span>{profile?.accountId || "—"}</span>
+          </div>
+          <div className="pp-row">
+            <span>Last Login</span>
+            <span>{profile?.lastLogin || "Today"}</span>
+          </div>
+          <div className="pp-row">
+            <span>Device</span>
+            <span>Desktop</span>
+          </div>
+          <div className="pp-row">
+            <span>Verification</span>
+            <span>Verified ✓</span>
+          </div>
         </div>
 
         {/* CLOSE */}

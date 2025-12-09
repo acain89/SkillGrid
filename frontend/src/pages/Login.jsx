@@ -1,4 +1,5 @@
 // src/pages/Login.jsx
+
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./auth.css";
@@ -12,6 +13,9 @@ import {
 import { auth, db, googleProvider } from "../services/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
+// ✅ Correct FCM import
+import { initFcmForUser } from "../services/messaging";
+
 const CLICK_SOUND = "/sounds/ui-click.mp3";
 
 export default function Login() {
@@ -23,8 +27,27 @@ export default function Login() {
   const [error, setError] = useState("");
 
   /* -------------------------------------------------------
+     FCM: Request + Save Token
+  -------------------------------------------------------- */
+  async function registerUserToken(uid) {
+    try {
+      console.log("🔔 Requesting FCM token…");
+      const token = await initFcmForUser();
+
+      if (!token) {
+        console.warn("⚠️ No FCM token generated.");
+        return;
+      }
+
+      console.log("FCM token stored for user:", uid);
+    } catch (err) {
+      console.warn("Failed to save token:", err);
+    }
+  }
+
+  /* -------------------------------------------------------
      EMAIL/PASSWORD LOGIN
-  ------------------------------------------------------- */
+  -------------------------------------------------------- */
   async function handleEmailLogin(e) {
     e.preventDefault();
     setError("");
@@ -35,26 +58,29 @@ export default function Login() {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const user = cred.user;
 
-      const userDoc = doc(db, "users", user.uid);
+      const userRef = doc(db, "users", user.uid);
       let snap = null;
 
       try {
-        snap = await getDoc(userDoc);
+        snap = await getDoc(userRef);
       } catch (err) {
         console.warn("Firestore read failed:", err);
       }
 
       if (!snap || !snap.exists()) {
         try {
-          await setDoc(userDoc, {
+          await setDoc(userRef, {
             username: user.displayName || null,
             email: user.email,
-            createdAt: Date.now(),
+            createdAt: Date.now()
           });
         } catch (err) {
           console.warn("Firestore write failed:", err);
         }
       }
+
+      // 🔔 Register push notification token
+      await registerUserToken(user.uid);
 
       navigate("/home");
     } catch (err) {
@@ -65,8 +91,8 @@ export default function Login() {
   }
 
   /* -------------------------------------------------------
-     GOOGLE LOGIN (FIXED — NO UI BREAKS)
-  ------------------------------------------------------- */
+     GOOGLE LOGIN
+  -------------------------------------------------------- */
   async function handleGoogleLogin() {
     setError("");
     setBusy(true);
@@ -76,20 +102,18 @@ export default function Login() {
       const cred = await signInWithPopup(auth, googleProvider);
       const user = cred.user;
 
+      const userRef = doc(db, "users", user.uid);
       let snap = null;
 
-      // Try reading Firestore user doc (DON'T break UI if it fails)
       try {
-        snap = await getDoc(doc(db, "users", user.uid));
+        snap = await getDoc(userRef);
       } catch (err) {
         console.warn("Firestore read failed:", err);
       }
 
-      // If user doc missing OR username missing → create
       if (!snap || !snap.exists() || !snap.data().username) {
         let finalUsername = user.displayName || "";
 
-        // If missing username → prompt
         if (!finalUsername) {
           while (!finalUsername) {
             const namePrompt = window.prompt("Choose a username:", "");
@@ -98,32 +122,31 @@ export default function Login() {
           }
         }
 
-        const lower = finalUsername.toLowerCase();
-        const userDoc = doc(db, "users", user.uid);
-        const nameDocRef = doc(db, "usernames", lower);
+        const unameLower = finalUsername.toLowerCase();
+        const unameRef = doc(db, "usernames", unameLower);
 
         try {
-          // Check if username taken
-          const nameSnap = await getDoc(nameDocRef);
+          const nameSnap = await getDoc(unameRef);
           if (nameSnap.exists()) {
             throw new Error("That username is already taken.");
           }
 
-          await setDoc(userDoc, {
+          await setDoc(userRef, {
             username: finalUsername,
             email: user.email,
-            createdAt: Date.now(),
+            createdAt: Date.now()
           });
 
-          await setDoc(nameDocRef, { uid: user.uid });
+          await setDoc(unameRef, { uid: user.uid });
         } catch (err) {
-          console.warn("Firestore write failed:", err);
+          console.warn("Firestore username write failed:", err);
         }
       }
 
-      // LOGIN SUCCESSFUL → MOVE TO HOME
-      navigate("/home");
+      // 🔔 Save notification token
+      await registerUserToken(user.uid);
 
+      navigate("/home");
     } catch (err) {
       setError(err.message || "Google login failed.");
     } finally {
@@ -133,7 +156,7 @@ export default function Login() {
 
   /* -------------------------------------------------------
      JSX RETURN
-  ------------------------------------------------------- */
+  -------------------------------------------------------- */
   return (
     <div className="auth-root">
       <div className="auth-triangle"></div>

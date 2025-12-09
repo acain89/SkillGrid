@@ -1,34 +1,30 @@
 // backend/push/sendPushToUser.js
-
-import { sendPushToToken } from "./sendPushCore.js";
-import { logPushEvent } from "./pushLogger.js";
-import { db } from "../firebaseAdmin.js";  // ✔ Admin Firestore
+import admin from "../config/firebaseAdmin.js";
+import { getUserTokens } from "./tokenHelpers.js";
 
 /**
- * Look up the user's FCM token and send them a notification.
+ * Send a push notification to a single user.
  */
-export async function sendPushToUser(uid, payload) {
-  await logPushEvent({
-    type: "queued",
-    uid,
-    payload,
-    ts: Date.now(),
-  });
+export async function sendPushToUser(uid, { title, body, route = "/" }) {
+  try {
+    const tokens = await getUserTokens(uid);
+    if (!tokens || tokens.length === 0) {
+      console.log("No tokens found for user:", uid);
+      return;
+    }
 
-  // Fetch user doc via Admin SDK
-  const ref = db.collection("users").doc(uid);
-  const snap = await ref.get();
+    const payload = {
+      notification: { title, body },
+      data: { route },
+    };
 
-  if (!snap.exists || !snap.data().fcmToken) {
-    await logPushEvent({
-      type: "no-token",
-      uid,
-      payload,
+    const res = await admin.messaging().sendMulticast({
+      tokens,
+      ...payload,
     });
-    return null;
+
+    console.log("Push sent:", res.successCount, "success,", res.failureCount, "failed");
+  } catch (err) {
+    console.error("Error sending push:", err);
   }
-
-  const token = snap.data().fcmToken;
-
-  return sendPushToToken(token, payload);
 }
